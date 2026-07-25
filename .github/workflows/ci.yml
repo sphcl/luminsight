@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Verificação contínua
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Verificação de tipos TypeScript
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Auditoria de segurança das dependências
+        run: npm audit --audit-level=high
+
+      - name: Testes
+        run: npm run test:run
+
+      - name: Build de produção
+        run: npm run build
