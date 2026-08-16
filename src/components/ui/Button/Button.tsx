@@ -52,7 +52,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'inline-flex items-center justify-center gap-2 rounded-lg font-semibold',
           'transition-colors duration-150',
           'disabled:opacity-50 disabled:cursor-not-allowed',
+          // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
           variantStyles[variant],
+          // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
           sizeStyles[size],
           fullWidth && 'w-full',
           className

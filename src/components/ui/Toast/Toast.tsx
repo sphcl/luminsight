@@ -38,6 +38,7 @@ export function Toast({
       transition={{ duration: 0.2 }}
       className={cn(
         'pointer-events-auto rounded-lg px-4 py-3 text-sm font-medium shadow-lg',
+        // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
         variantStyles[variant]
       )}
     >

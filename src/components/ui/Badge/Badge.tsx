@@ -22,6 +22,7 @@ export function Badge({ variant = 'neutral', className, children }: BadgeProps) 
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
         variantStyles[variant],
         className
       )}
