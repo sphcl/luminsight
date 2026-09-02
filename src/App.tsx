@@ -1,108 +1,91 @@
 import { useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import {
-  Badge,
-  Button,
-  Card,
-  Input,
-  Modal,
-  ProgressBar,
-  Skeleton,
-  Toast,
-} from '@/components/ui'
+import { Badge, Button, Card } from '@/components/ui'
+import { LoginForm, RegisterForm } from '@/features/auth'
+import { useAuth } from '@/hooks/useAuth'
+import { useAuthActions } from '@/features/auth/hooks/useAuthActions'
 
+type AuthTab = 'login' | 'register'
+
+// Tela temporária só pra validar o fluxo de autenticação de ponta a ponta.
+// Na Fase 4 isso vira roteamento de verdade com React Router.
 function App() {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [showToast, setShowToast] = useState(false)
+  const { user, userDocument, isInitializing, isAuthenticated } = useAuth()
+  const { logout, isLoading: isLoggingOut } = useAuthActions()
+  const [activeTab, setActiveTab] = useState<AuthTab>('login')
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-slate-500">Carregando sessão...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen p-8">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8">
+      <div className="mx-auto flex max-w-md flex-col gap-6">
         <header>
           <h1 className="text-3xl font-extrabold text-slate-900">LumInsight</h1>
-          <p className="text-sm text-slate-500">Design System — Fase 2</p>
+          <p className="text-sm text-slate-500">Fase 3 — Autenticação (tela de validação)</p>
         </header>
 
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Botões</h2>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="primary">Primário</Button>
-            <Button variant="secondary">Secundário</Button>
-            <Button variant="ghost">Ghost</Button>
-            <Button variant="danger">Perigo</Button>
-            <Button isLoading>Carregando</Button>
-            <Button disabled>Desabilitado</Button>
-          </div>
-        </Card>
+        {isAuthenticated ? (
+          <Card>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="success">Autenticado</Badge>
+                <Badge>{userDocument?.role ?? 'user'}</Badge>
+              </div>
 
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Campos</h2>
-          <div className="flex flex-col gap-4">
-            <Input label="Email" type="email" placeholder="voce@email.com" />
-            <Input label="Senha" type="password" hint="Mínimo de 8 caracteres" />
-            <Input label="Confirmação" error="As senhas não coincidem" />
-          </div>
-        </Card>
+              <div className="flex flex-col gap-1 text-sm text-slate-700">
+                <p>
+                  <span className="font-semibold">UID:</span> {user?.uid}
+                </p>
+                <p>
+                  <span className="font-semibold">Nome:</span>{' '}
+                  {userDocument?.displayName ?? '—'}
+                </p>
+                <p>
+                  <span className="font-semibold">Email:</span> {user?.email}
+                </p>
+                <p>
+                  <span className="font-semibold">Onboarding concluído:</span>{' '}
+                  {userDocument?.onboardingCompleted ? 'sim' : 'não'}
+                </p>
+              </div>
 
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Badges</h2>
-          <div className="flex flex-wrap gap-2">
-            <Badge>Neutro</Badge>
-            <Badge variant="primary">Iniciante</Badge>
-            <Badge variant="success">Concluído</Badge>
-            <Badge variant="warning">Em andamento</Badge>
-            <Badge variant="danger">Bloqueado</Badge>
-          </div>
-        </Card>
+              <Button
+                variant="secondary"
+                isLoading={isLoggingOut}
+                onClick={() => void logout()}
+                fullWidth
+              >
+                Sair
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <div className="mb-4 flex gap-2">
+              <Button
+                variant={activeTab === 'login' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('login')}
+              >
+                Entrar
+              </Button>
+              <Button
+                variant={activeTab === 'register' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('register')}
+              >
+                Criar conta
+              </Button>
+            </div>
 
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Progresso</h2>
-          <ProgressBar value={65} label="Módulo 2" showPercentage />
-        </Card>
-
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Skeleton</h2>
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="mb-4 font-bold text-slate-900">Sobreposições</h2>
-          <div className="flex gap-3">
-            <Button onClick={() => setIsModalOpen(true)}>Abrir modal</Button>
-            <Button variant="secondary" onClick={() => setShowToast(true)}>
-              Mostrar toast
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Confirmar ação"
-      >
-        <p className="mb-5 text-sm text-slate-600">
-          Este modal fecha com a tecla Escape, clicando fora ou no botão abaixo.
-        </p>
-        <Button onClick={() => setIsModalOpen(false)} fullWidth>
-          Entendi
-        </Button>
-      </Modal>
-
-      <div className="pointer-events-none fixed right-4 top-4 z-50">
-        <AnimatePresence>
-          {showToast && (
-            <Toast
-              message="Componente funcionando corretamente"
-              variant="success"
-              onDismiss={() => setShowToast(false)}
-            />
-          )}
-        </AnimatePresence>
+            {activeTab === 'login' ? <LoginForm /> : <RegisterForm />}
+          </Card>
+        )}
       </div>
     </div>
   )

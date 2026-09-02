@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Regra geral do projeto: nega tudo por padrão. Cada coleção só abre
+// exatamente o acesso que precisa, nada além disso.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // createdAt/lastLoginAt precisam ser o carimbo do servidor (serverTimestamp()),
+    // nunca uma data que o cliente inventou. O Firestore resolve o sentinel de
+    // serverTimestamp() como request.time no momento em que a regra é avaliada,
+    // então essa comparação barra quem tentar mandar new Date() na mão.
+    function isServerTimestamp(field) {
+      return field == request.time;
+    }
+
+    // Documento novo só pode nascer com role 'user' e progresso zerado.
+    // Ninguém cria a própria conta já como admin ou com módulos "concluídos".
+    function isValidUserCreate() {
+      let data = request.resource.data;
+      return data.role == 'user'
+        && data.displayName is string
+        && data.email is string
+        && (data.photoURL == null || data.photoURL is string)
+        && data.onboardingCompleted == false
+        && data.completedModules == []
+        && data.completedLessons == []
+        && data.completedSimulations == []
+        && data.totalQuizzesCompleted == 0
+        && isServerTimestamp(data.createdAt)
+        && isServerTimestamp(data.lastLoginAt);
+    }
+
+    function roleIsImmutable() {
+      return request.resource.data.role == resource.data.role;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserCreate();
+      allow update: if isOwner(userId) && roleIsImmutable();
+      allow delete: if false;
+    }
+
+    // Conteúdo do TCC (trilha, lições): todo usuário autenticado lê,
+    // ninguém escreve pelo client — isso só entra via console/admin SDK
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Resultado de quiz é criado uma vez e nunca mais muda: impede que o
+    // usuário edite a própria nota depois de reprovar
+    match /quizResults/{resultId} {
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Catch-all: qualquer coleção que a gente esqueceu de listar acima
+    // fica bloqueada, em vez de aberta por omissão
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
