@@ -1,0 +1,1 @@
+export { Simulacoes } from './Simulacoes'
