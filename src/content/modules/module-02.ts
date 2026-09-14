@@ -1,20 +1,20 @@
 import type { ContentBlock, ModuleDocument } from '@/types/module.types'
 import { PLACEHOLDER_COLOR, PLACEHOLDER_ICON, type LessonEntry } from '@/content/types'
-import { MODULE_03_ID } from './module-03'
+import { MODULE_01_ID } from './module-01'
 
-export const MODULE_04_ID = 'modulo-04'
+export const MODULE_02_ID = 'modulo-02'
 
-export const module04: ModuleDocument = {
-  title: 'Casos Reais e Golpes Modernos',
+export const module02: ModuleDocument = {
+  title: 'Phishing: A Arte do Engano Digital',
   description: '[PENDENTE] Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-  order: 4,
+  order: 2,
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
-  difficulty: 'intermediario',
+  difficulty: 'iniciante',
   estimatedMinutes: 35,
   totalLessons: 3,
   isActive: false,
-  requiredModuleId: MODULE_03_ID,
+  requiredModuleId: MODULE_01_ID,
 }
 
 const pendingLessonContent: ContentBlock[] = [
@@ -34,11 +34,11 @@ const pendingLessonContent: ContentBlock[] = [
   { type: 'fact', content: '[PENDENTE] Lorem ipsum dolor sit amet.', source: '[PENDENTE] Lorem ipsum.' },
 ]
 
-export const module04Lessons: LessonEntry[] = [
+export const module02Lessons: LessonEntry[] = [
   {
     id: 'licao-01',
     data: {
-      title: 'O golpe do falso gerente bancário',
+      title: 'O que é Phishing e suas variantes',
       order: 1,
       estimatedMinutes: 12,
       readingTimeSeconds: 260,
@@ -48,7 +48,7 @@ export const module04Lessons: LessonEntry[] = [
   {
     id: 'licao-02',
     data: {
-      title: 'O crime organizado usa IA',
+      title: 'Phishing, Vishing e Smishing na prática',
       order: 2,
       estimatedMinutes: 12,
       readingTimeSeconds: 260,
@@ -58,7 +58,7 @@ export const module04Lessons: LessonEntry[] = [
   {
     id: 'licao-03',
     data: {
-      title: 'Spear Phishing: o ataque feito sob medida',
+      title: 'Como identificar uma tentativa de ataque',
       order: 3,
       estimatedMinutes: 11,
       readingTimeSeconds: 250,

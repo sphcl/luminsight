@@ -86,6 +86,11 @@ service cloud.firestore {
       }
     }
 
+    match /simulations/{simulationId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // Resultado de quiz é criado uma vez e nunca mais muda: impede que o
     // usuário edite a própria nota depois de reprovar
     match /quizResults/{resultId} {

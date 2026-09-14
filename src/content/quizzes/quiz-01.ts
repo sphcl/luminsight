@@ -12,7 +12,7 @@ const trueFalseOptions = [
   { id: 'b', text: 'Falso' },
 ]
 
-export const quiz04Questions: QuizQuestion[] = [
+export const quiz01Questions: QuizQuestion[] = [
   { id: 'q1', type: 'multiple_choice', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
   { id: 'q2', type: 'multiple_choice', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
   { id: 'q3', type: 'multiple_choice', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
