@@ -42,23 +42,48 @@ service cloud.firestore {
       return request.resource.data.role == resource.data.role;
     }
 
+    function isValidProgressShape() {
+      let data = request.resource.data;
+      return data.lessonsCompleted is list
+        && data.quizAttempts is int && data.quizAttempts >= 0
+        && (data.quizBestScore == null
+            || (data.quizBestScore is number && data.quizBestScore >= 0 && data.quizBestScore <= 100))
+        && data.simulationCompleted is bool
+        && isServerTimestamp(data.lastUpdatedAt);
+    }
+
+    function isValidProgressCreate() {
+      let data = request.resource.data;
+      return isValidProgressShape()
+        && isServerTimestamp(data.startedAt)
+        && (data.completedAt == null || isServerTimestamp(data.completedAt));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserCreate();
       allow update: if isOwner(userId) && roleIsImmutable();
       allow delete: if false;
+
+      match /progress/{moduleId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidProgressCreate();
+        allow update: if isOwner(userId) && isValidProgressShape();
+        allow delete: if false;
+      }
     }
 
     // Conteúdo do TCC (trilha, lições): todo usuário autenticado lê,
-    // ninguém escreve pelo client — isso só entra via console/admin SDK
+    // ninguém escreve pelo client, isso só entra via script de seed com o
+    // Admin SDK (scripts/seed-modules.ts), que ignora estas regras.
     match /modules/{moduleId} {
       allow read: if isSignedIn();
       allow write: if false;
-    }
 
-    match /lessons/{lessonId} {
-      allow read: if isSignedIn();
-      allow write: if false;
+      match /lessons/{lessonId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
     }
 
     // Resultado de quiz é criado uma vez e nunca mais muda: impede que o

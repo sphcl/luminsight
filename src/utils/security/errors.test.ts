@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { FirebaseError } from 'firebase/app'
-import { mapAuthError } from './errors'
+import { mapAuthError, mapFirestoreError } from './errors'
 
 describe('mapAuthError', () => {
   beforeEach(() => {
@@ -54,5 +54,26 @@ describe('mapAuthError', () => {
   it('retorna mensagem genérica para erro que não é do Firebase', () => {
     const message = mapAuthError(new Error('falha qualquer'))
     expect(message).toBe('Não foi possível concluir a ação. Tente novamente.')
+  })
+})
+
+describe('mapFirestoreError', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('retorna mensagem genérica sem vazar o código interno do erro', () => {
+    const message = mapFirestoreError(new FirebaseError('permission-denied', 'x'))
+
+    expect(message).toBe('Não foi possível carregar os dados. Tente novamente mais tarde.')
+    expect(message).not.toContain('permission-denied')
+  })
+
+  it('retorna a mesma mensagem genérica independente da causa do erro', () => {
+    expect(mapFirestoreError(new Error('offline'))).toBe(mapFirestoreError('qualquer coisa'))
   })
 })
