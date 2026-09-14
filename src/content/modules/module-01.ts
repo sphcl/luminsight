@@ -1,20 +1,19 @@
 import type { ContentBlock, ModuleDocument } from '@/types/module.types'
 import { PLACEHOLDER_COLOR, PLACEHOLDER_ICON, type LessonEntry } from '@/content/types'
-import { MODULE_03_ID } from './module-03'
 
-export const MODULE_04_ID = 'modulo-04'
+export const MODULE_01_ID = 'modulo-01'
 
-export const module04: ModuleDocument = {
-  title: 'Casos Reais e Golpes Modernos',
+export const module01: ModuleDocument = {
+  title: 'Fundamentos da Engenharia Social',
   description: '[PENDENTE] Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-  order: 4,
+  order: 1,
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
-  difficulty: 'intermediario',
-  estimatedMinutes: 35,
+  difficulty: 'iniciante',
+  estimatedMinutes: 30,
   totalLessons: 3,
   isActive: false,
-  requiredModuleId: MODULE_03_ID,
+  requiredModuleId: null,
 }
 
 const pendingLessonContent: ContentBlock[] = [
@@ -34,34 +33,34 @@ const pendingLessonContent: ContentBlock[] = [
   { type: 'fact', content: '[PENDENTE] Lorem ipsum dolor sit amet.', source: '[PENDENTE] Lorem ipsum.' },
 ]
 
-export const module04Lessons: LessonEntry[] = [
+export const module01Lessons: LessonEntry[] = [
   {
     id: 'licao-01',
     data: {
-      title: 'O golpe do falso gerente bancário',
+      title: 'O que é Engenharia Social',
       order: 1,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 10,
+      readingTimeSeconds: 240,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-02',
     data: {
-      title: 'O crime organizado usa IA',
+      title: 'Como golpistas pensam: os gatilhos psicológicos',
       order: 2,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 10,
+      readingTimeSeconds: 240,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-03',
     data: {
-      title: 'Spear Phishing: o ataque feito sob medida',
+      title: 'O fator humano: por que tecnologia não basta',
       order: 3,
-      estimatedMinutes: 11,
-      readingTimeSeconds: 250,
+      estimatedMinutes: 10,
+      readingTimeSeconds: 240,
       content: pendingLessonContent,
     },
   },

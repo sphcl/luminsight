@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
 import { calculateModuleProgress, getModuleStatus, QUIZ_PASSING_SCORE } from './trail'
+import { CONTENT_MODULES } from '@/content'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument, ProgressMap } from '@/types/progress.types'
 
@@ -187,5 +188,48 @@ describe('calculateModuleProgress', () => {
     const progress = buildProgress({ lessonsCompleted: ['licao-01', 'licao-01', 'licao-01'] })
 
     expect(calculateModuleProgress(module, progress)).toBeLessThanOrEqual(100)
+  })
+})
+
+describe('cadeia de dependências dos cinco módulos reais', () => {
+  const modules: ModuleWithId[] = CONTENT_MODULES.map((entry) => ({ ...entry.module, id: entry.id }))
+
+  function getModule(id: string): ModuleWithId {
+    const found = modules.find((module) => module.id === id)
+    if (!found) throw new Error(`módulo "${id}" não encontrado nos fixtures do teste`)
+    return found
+  }
+
+  function completeProgress(lessonCount: number): ProgressDocument {
+    return buildProgress({
+      lessonsCompleted: Array.from({ length: lessonCount }, (_, index) => `licao-0${index + 1}`),
+      simulationCompleted: true,
+      quizBestScore: QUIZ_PASSING_SCORE,
+    })
+  }
+
+  it('libera cada módulo só depois do anterior estar completo', () => {
+    const modulo01 = getModule('modulo-01')
+    const modulo02 = getModule('modulo-02')
+    const modulo03 = getModule('modulo-03')
+    const progressMap: ProgressMap = {}
+
+    expect(getModuleStatus(modulo01, progressMap, modules)).toBe('available')
+    expect(getModuleStatus(modulo02, progressMap, modules)).toBe('locked')
+
+    progressMap['modulo-01'] = completeProgress(modulo01.totalLessons)
+    expect(getModuleStatus(modulo02, progressMap, modules)).toBe('available')
+    expect(getModuleStatus(modulo03, progressMap, modules)).toBe('locked')
+  })
+
+  it('libera o módulo 5 só quando todos os anteriores estão completos', () => {
+    const progressMap: ProgressMap = {
+      'modulo-01': completeProgress(getModule('modulo-01').totalLessons),
+      'modulo-02': completeProgress(getModule('modulo-02').totalLessons),
+      'modulo-03': completeProgress(getModule('modulo-03').totalLessons),
+      'modulo-04': completeProgress(getModule('modulo-04').totalLessons),
+    }
+
+    expect(getModuleStatus(getModule('modulo-05'), progressMap, modules)).toBe('available')
   })
 })

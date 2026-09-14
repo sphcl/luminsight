@@ -1,20 +1,20 @@
 import type { ContentBlock, ModuleDocument } from '@/types/module.types'
 import { PLACEHOLDER_COLOR, PLACEHOLDER_ICON, type LessonEntry } from '@/content/types'
-import { MODULE_03_ID } from './module-03'
+import { MODULE_04_ID } from './module-04'
 
-export const MODULE_04_ID = 'modulo-04'
+export const MODULE_05_ID = 'modulo-05'
 
-export const module04: ModuleDocument = {
-  title: 'Casos Reais e Golpes Modernos',
+export const module05: ModuleDocument = {
+  title: 'Como se Proteger',
   description: '[PENDENTE] Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-  order: 4,
+  order: 5,
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
-  difficulty: 'intermediario',
-  estimatedMinutes: 35,
+  difficulty: 'avancado',
+  estimatedMinutes: 40,
   totalLessons: 3,
   isActive: false,
-  requiredModuleId: MODULE_03_ID,
+  requiredModuleId: MODULE_04_ID,
 }
 
 const pendingLessonContent: ContentBlock[] = [
@@ -34,34 +34,34 @@ const pendingLessonContent: ContentBlock[] = [
   { type: 'fact', content: '[PENDENTE] Lorem ipsum dolor sit amet.', source: '[PENDENTE] Lorem ipsum.' },
 ]
 
-export const module04Lessons: LessonEntry[] = [
+export const module05Lessons: LessonEntry[] = [
   {
     id: 'licao-01',
     data: {
-      title: 'O golpe do falso gerente bancário',
+      title: 'Boas práticas: o que fazer e o que nunca fazer',
       order: 1,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 13,
+      readingTimeSeconds: 280,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-02',
     data: {
-      title: 'O crime organizado usa IA',
+      title: 'Como verificar identidade por múltiplos canais',
       order: 2,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 14,
+      readingTimeSeconds: 290,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-03',
     data: {
-      title: 'Spear Phishing: o ataque feito sob medida',
+      title: 'Como reportar golpes e onde buscar ajuda',
       order: 3,
-      estimatedMinutes: 11,
-      readingTimeSeconds: 250,
+      estimatedMinutes: 13,
+      readingTimeSeconds: 280,
       content: pendingLessonContent,
     },
   },

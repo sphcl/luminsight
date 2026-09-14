@@ -1,20 +1,20 @@
 import type { ContentBlock, ModuleDocument } from '@/types/module.types'
 import { PLACEHOLDER_COLOR, PLACEHOLDER_ICON, type LessonEntry } from '@/content/types'
-import { MODULE_03_ID } from './module-03'
+import { MODULE_02_ID } from './module-02'
 
-export const MODULE_04_ID = 'modulo-04'
+export const MODULE_03_ID = 'modulo-03'
 
-export const module04: ModuleDocument = {
-  title: 'Casos Reais e Golpes Modernos',
+export const module03: ModuleDocument = {
+  title: 'Inteligência Artificial nas Mãos dos Golpistas',
   description: '[PENDENTE] Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-  order: 4,
+  order: 3,
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
   difficulty: 'intermediario',
-  estimatedMinutes: 35,
+  estimatedMinutes: 40,
   totalLessons: 3,
   isActive: false,
-  requiredModuleId: MODULE_03_ID,
+  requiredModuleId: MODULE_02_ID,
 }
 
 const pendingLessonContent: ContentBlock[] = [
@@ -34,34 +34,34 @@ const pendingLessonContent: ContentBlock[] = [
   { type: 'fact', content: '[PENDENTE] Lorem ipsum dolor sit amet.', source: '[PENDENTE] Lorem ipsum.' },
 ]
 
-export const module04Lessons: LessonEntry[] = [
+export const module03Lessons: LessonEntry[] = [
   {
     id: 'licao-01',
     data: {
-      title: 'O golpe do falso gerente bancário',
+      title: 'Como a IA generativa mudou os golpes',
       order: 1,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 13,
+      readingTimeSeconds: 280,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-02',
     data: {
-      title: 'O crime organizado usa IA',
+      title: 'Deepfakes: quando ver não é acreditar',
       order: 2,
-      estimatedMinutes: 12,
-      readingTimeSeconds: 260,
+      estimatedMinutes: 14,
+      readingTimeSeconds: 290,
       content: pendingLessonContent,
     },
   },
   {
     id: 'licao-03',
     data: {
-      title: 'Spear Phishing: o ataque feito sob medida',
+      title: 'Clonagem de voz: o golpe da voz familiar',
       order: 3,
-      estimatedMinutes: 11,
-      readingTimeSeconds: 250,
+      estimatedMinutes: 13,
+      readingTimeSeconds: 280,
       content: pendingLessonContent,
     },
   },
