@@ -3,7 +3,7 @@ import type { SVGProps } from 'react'
 type IconProps = SVGProps<SVGSVGElement>
 
 // Ícones inline (sem biblioteca externa): stroke-based, 24x24, herdam a cor
-// do texto via currentColor. Decorativos por padrão — quem usa passa
+// do texto via currentColor. Decorativos por padrão, quem usa passa
 // aria-hidden="true" já que sempre acompanham um rótulo de texto ao lado.
 function createIconDefaults(props: IconProps): IconProps {
   return {
@@ -23,15 +23,6 @@ export function MenuIcon(props: IconProps) {
       <line x1="4" y1="6" x2="20" y2="6" />
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="18" x2="20" y2="18" />
-    </svg>
-  )
-}
-
-export function CloseIcon(props: IconProps) {
-  return (
-    <svg {...createIconDefaults(props)}>
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
     </svg>
   )
 }

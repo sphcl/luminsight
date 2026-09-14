@@ -11,7 +11,6 @@ export const ROUTES = {
   SIMULACOES: '/simulacoes',
   SIMULACAO: '/simulacoes/:simulationId',
   PERFIL: '/perfil',
-  CONQUISTAS: '/conquistas',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
 } as const
