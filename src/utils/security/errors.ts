@@ -2,6 +2,7 @@ import { FirebaseError } from 'firebase/app'
 
 const GENERIC_CREDENTIALS_MESSAGE = 'Email ou senha incorretos.'
 const GENERIC_FALLBACK_MESSAGE = 'Não foi possível concluir a ação. Tente novamente.'
+const GENERIC_FIRESTORE_MESSAGE = 'Não foi possível carregar os dados. Tente novamente mais tarde.'
 
 // Códigos que precisam retornar a MESMA mensagem: se o erro variasse entre
 // "usuário não existe" e "senha errada", um atacante conseguiria enumerar
@@ -44,4 +45,17 @@ export function mapAuthError(error: unknown): string {
   }
 
   return GENERIC_FALLBACK_MESSAGE
+}
+
+// Traduz um erro do Firestore (permissão negada, offline, etc.) para uma
+// mensagem segura de exibir ao usuário. O código real (ex.: "permission-denied",
+// que pode indicar uma regra de segurança mal configurada) só vai pro console,
+// e mesmo assim só em DEV — em produção não sobra rastro nenhum no console do
+// navegador.
+export function mapFirestoreError(error: unknown): string {
+  if (import.meta.env.DEV) {
+    console.error('[firestore]', error)
+  }
+
+  return GENERIC_FIRESTORE_MESSAGE
 }

@@ -35,7 +35,10 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_' },
+        // ignoreRestSiblings: permite `const { campo, ...resto } = obj` para
+        // "omitir" um campo (comum em testes que checam validação de campo
+        // faltando) sem precisar referenciar `campo` só para calar o lint.
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
       'security/detect-unsafe-regex': 'error',
@@ -45,6 +48,14 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       eqeqeq: ['error', 'always'],
+    },
+  },
+  {
+    // Script de CLI (Node, não roda no browser): progresso em console.log é
+    // a interface do usuário aqui, não um resíduo de debug esquecido.
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
     },
   }
 )

@@ -8,10 +8,14 @@ dist-ssr
 # Cobertura de testes
 coverage
 
-# Variáveis de ambiente — NUNCA vai para o repositório
+# Variáveis de ambiente, NUNCA vai para o repositório
 .env
 .env.*
 !.env.example
+
+# Credencial de admin do Firebase (Admin SDK) usada pelo script de seed.
+# NUNCA vai para o repositório. Ver README, seção "Seed do Firestore".
+firebase-service-account*.json
 
 # Editor
 .vscode/*
@@ -34,3 +38,7 @@ npm-debug.log*
 # Cache
 .eslintcache
 .prettiercache
+
+# Build info incremental do TypeScript (específico da máquina/checkout), não
+# deveria ter sido commitado (estava rastreado desde o commit inicial)
+*.tsbuildinfo
