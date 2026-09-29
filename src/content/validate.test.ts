@@ -18,6 +18,7 @@ function buildModule(overrides: Partial<ModuleDocument> = {}): ModuleDocument {
     totalLessons: 1,
     isActive: false,
     requiredModuleId: null,
+    hasSimulation: false,
     ...overrides,
   }
 }
@@ -30,7 +31,9 @@ function buildLesson(overrides: Partial<LessonEntry> = {}): LessonEntry {
   }
 }
 
-function buildQuestion(overrides: Partial<QuizQuestion> = {}): QuizQuestion {
+type MultipleChoiceQuestion = Extract<QuizQuestion, { type: 'multiple_choice' }>
+
+function buildQuestion(overrides: Partial<MultipleChoiceQuestion> = {}): QuizQuestion {
   return {
     id: 'q1',
     type: 'multiple_choice',
@@ -38,6 +41,8 @@ function buildQuestion(overrides: Partial<QuizQuestion> = {}): QuizQuestion {
     options: [
       { id: 'a', text: 'A' },
       { id: 'b', text: 'B' },
+      { id: 'c', text: 'C' },
+      { id: 'd', text: 'D' },
     ],
     correctOptionId: 'a',
     explanation: 'Explicação',
@@ -138,6 +143,22 @@ describe('validateContent', () => {
     })
     const entry = buildEntry({ quiz: [question, ...buildQuiz().slice(1)] })
     expect(validateContent([entry], [])).not.toEqual([])
+  })
+
+  it('acusa multiple_choice sem quatro alternativas', () => {
+    const question = buildQuestion({ options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] })
+    const entry = buildEntry({ quiz: [question, ...buildQuiz().slice(1)] })
+    expect(validateContent([entry], [])).not.toEqual([])
+  })
+
+  it('acusa hasSimulation true sem simulação correspondente', () => {
+    const entry = buildEntry({ module: buildModule({ hasSimulation: true }) })
+    expect(validateContent([entry], [])).not.toEqual([])
+  })
+
+  it('acusa simulação apontando para módulo com hasSimulation false', () => {
+    const entry = buildEntry({ module: buildModule({ hasSimulation: false }) })
+    expect(validateContent([entry], [buildSimulation({ moduleId: 'modulo-01' })])).not.toEqual([])
   })
 
   it('acusa ciclo na cadeia de requiredModuleId', () => {

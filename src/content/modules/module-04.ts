@@ -14,6 +14,7 @@ export const module04: ModuleDocument = {
   estimatedMinutes: 35,
   totalLessons: 3,
   isActive: false,
+  hasSimulation: true,
   requiredModuleId: MODULE_03_ID,
 }
 

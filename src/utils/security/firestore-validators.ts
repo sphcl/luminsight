@@ -26,6 +26,7 @@ const moduleSchema = z.object({
   totalLessons: z.number(),
   isActive: z.boolean(),
   requiredModuleId: z.string().nullable(),
+  hasSimulation: z.boolean(),
 }) satisfies z.ZodType<ModuleDocument>
 
 const contentBlockSchema = z.discriminatedUnion('type', [

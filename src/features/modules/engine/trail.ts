@@ -1,17 +1,14 @@
+import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ModuleStatus, ProgressDocument, ProgressMap } from '@/types/progress.types'
 
-// Nota de pontuação mínima (0-100) para considerar o quiz de um módulo
-// aprovado. Vive aqui (não no Firestore, não no ModuleDocument) porque é
-// regra de negócio da trilha, não conteúdo (mesmo critério que a tela de
-// quiz (Fase 8) usa para preencher QuizResultDocument.passed).
-export const QUIZ_PASSING_SCORE = 70
-
-function isModuleComplete(module: ModuleWithId, progress: ProgressDocument): boolean {
+// Simulação só conta pra módulo que tem uma; o módulo 1 não tem.
+export function isModuleComplete(module: ModuleWithId, progress: ProgressDocument): boolean {
   const allLessonsDone = progress.lessonsCompleted.length >= module.totalLessons
   const quizPassed = progress.quizBestScore !== null && progress.quizBestScore >= QUIZ_PASSING_SCORE
+  const simulationDone = !module.hasSimulation || progress.simulationCompleted
 
-  return allLessonsDone && progress.simulationCompleted && quizPassed
+  return allLessonsDone && quizPassed && simulationDone
 }
 
 function hasAnyProgress(progress: ProgressDocument): boolean {
@@ -51,7 +48,7 @@ export function getModuleStatus(
   return hasAnyProgress(progress) ? 'in_progress' : 'available'
 }
 
-// Percentual (0-100) considerando lições + quiz aprovado + simulação como
+// Percentual (0-100) considerando lições + quiz aprovado + simulação (se houver) como
 // etapas de peso igual. module.totalLessons existe exatamente para essa
 // conta: evita ter que passar a lista inteira de lições só para saber quantas
 // faltam.
@@ -61,13 +58,16 @@ export function calculateModuleProgress(
 ): number {
   if (!progress) return 0
 
-  const totalSteps = module.totalLessons + 2
+  const simulationSteps = module.hasSimulation ? 1 : 0
+  const totalSteps = module.totalLessons + 1 + simulationSteps
   if (totalSteps <= 0) return 0
 
   const completedLessons = Math.min(progress.lessonsCompleted.length, module.totalLessons)
   const quizPassed = progress.quizBestScore !== null && progress.quizBestScore >= QUIZ_PASSING_SCORE
   const completedSteps =
-    completedLessons + (quizPassed ? 1 : 0) + (progress.simulationCompleted ? 1 : 0)
+    completedLessons +
+    (quizPassed ? 1 : 0) +
+    (module.hasSimulation && progress.simulationCompleted ? 1 : 0)
 
   return Math.round((completedSteps / totalSteps) * 100)
 }

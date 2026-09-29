@@ -10,17 +10,20 @@ export interface QuizOption {
 // Conteúdo do quiz (perguntas, alternativas e gabarito) vive só no bundle do
 // app, em src/content/quizzes/, nunca no Firestore. Ver README do módulo de
 // conteúdo para a justificativa de segurança e os limites dessa mitigação.
-export interface QuizQuestion {
+interface QuizQuestionBase {
   id: string
-  type: QuestionType
   prompt: string
   options: QuizOption[]
   correctOptionId: string
   explanation: string
-  // Só preenchido para perguntas do tipo 'visual'
-  imageSrc?: string
-  scenario?: string
 }
+
+// Union por type pra o TypeScript exigir cenário e imagem com alt só onde fazem sentido.
+export type QuizQuestion =
+  | (QuizQuestionBase & { type: 'multiple_choice' })
+  | (QuizQuestionBase & { type: 'true_false' })
+  | (QuizQuestionBase & { type: 'scenario'; scenario: string })
+  | (QuizQuestionBase & { type: 'visual'; imageSrc: string; imageAlt: string })
 
 export interface QuizAnswer {
   questionId: string

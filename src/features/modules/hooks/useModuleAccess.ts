@@ -5,7 +5,7 @@ import { getUserProgress } from '@/services/progress.service'
 import { calculateModuleProgress, getModuleStatus } from '@/features/modules/engine/trail'
 import { mapFirestoreError } from '@/utils/security/errors'
 import type { LessonWithId, ModuleWithId } from '@/types/module.types'
-import type { ModuleStatus } from '@/types/progress.types'
+import type { ModuleStatus, ProgressDocument } from '@/types/progress.types'
 
 export interface ModuleAccessData {
   module: ModuleWithId
@@ -13,6 +13,7 @@ export interface ModuleAccessData {
   moduleStatus: Exclude<ModuleStatus, 'locked'>
   progressPercent: number
   completedLessonIds: string[]
+  progress: ProgressDocument | undefined
 }
 
 export type ModuleAccessState =
@@ -73,6 +74,7 @@ export function useModuleAccess(moduleId: string | undefined): UseModuleAccessRe
           moduleStatus,
           progressPercent: calculateModuleProgress(module, progress),
           completedLessonIds: progress?.lessonsCompleted ?? [],
+          progress,
         })
       } catch (caughtError) {
         if (!isCurrent) return

@@ -13,6 +13,7 @@ const validModule = {
   totalLessons: 3,
   isActive: true,
   requiredModuleId: 'modulo-03',
+  hasSimulation: true,
 }
 
 const validLesson = {
@@ -47,6 +48,11 @@ describe('parseModule', () => {
 
   it('rejeita quando um campo tem o tipo errado', () => {
     expect(parseModule({ ...validModule, order: '4' })).toBeNull()
+  })
+
+  it('rejeita módulo sem hasSimulation, gravado antes do campo existir', () => {
+    const { hasSimulation, ...withoutHasSimulation } = validModule
+    expect(parseModule(withoutHasSimulation)).toBeNull()
   })
 
   it('rejeita difficulty fora do enum permitido', () => {

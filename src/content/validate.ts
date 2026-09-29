@@ -1,7 +1,14 @@
+import type { QuizQuestion } from '@/types/quiz.types'
 import type { SimulationDocument } from '@/types/simulation.types'
 import type { ContentModuleEntry } from './index'
 
 const PENDING_MARKER = '[PENDENTE]'
+
+// Só esses dois tipos têm número fixo de alternativas definido pelo layout da tela de quiz.
+const EXPECTED_OPTION_COUNT: Partial<Record<QuizQuestion['type'], number>> = {
+  multiple_choice: 4,
+  true_false: 2,
+}
 
 export function hasPendingText(value: unknown): boolean {
   if (typeof value === 'string') return value.includes(PENDING_MARKER)
@@ -32,6 +39,13 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
       )
     }
 
+    const hasSimulationContent = simulations.some((simulation) => simulation.moduleId === entry.id)
+    if (entry.module.hasSimulation !== hasSimulationContent) {
+      errors.push(
+        `Módulo "${entry.id}": hasSimulation é ${entry.module.hasSimulation}, mas ${hasSimulationContent ? 'existe' : 'não existe'} simulação com esse moduleId.`
+      )
+    }
+
     if (entry.quiz.length !== 10) {
       errors.push(`Módulo "${entry.id}": quiz precisa ter exatamente 10 questões, tem ${entry.quiz.length}.`)
     }
@@ -40,6 +54,12 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
       const optionIds = question.options.map((option) => option.id)
       if (new Set(optionIds).size !== optionIds.length) {
         errors.push(`Módulo "${entry.id}", questão "${question.id}": options com id duplicado.`)
+      }
+      const expectedOptions = EXPECTED_OPTION_COUNT[question.type]
+      if (expectedOptions !== undefined && question.options.length !== expectedOptions) {
+        errors.push(
+          `Módulo "${entry.id}", questão "${question.id}": ${question.type} precisa de ${expectedOptions} alternativas, tem ${question.options.length}.`
+        )
       }
       if (!optionIds.includes(question.correctOptionId)) {
         errors.push(
