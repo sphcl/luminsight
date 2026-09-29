@@ -13,11 +13,11 @@ function lessonsCollection(moduleId: string) {
 // Lista só os módulos ativos (isActive: true). Um módulo em rascunho no
 // Firestore não deve aparecer na trilha antes de estar pronto para publicar.
 export async function getModules(): Promise<ModuleWithId[]> {
-  const modulesQuery = query(
-    collection(db, MODULES_COLLECTION),
-    where('isActive', '==', true),
-    orderBy('order')
-  )
+  // Em DEV listo os inativos também, senão os módulos ainda com [PENDENTE] somem da trilha local.
+  const constraints = import.meta.env.DEV
+    ? [orderBy('order')]
+    : [where('isActive', '==', true), orderBy('order')]
+  const modulesQuery = query(collection(db, MODULES_COLLECTION), ...constraints)
   const snapshot = await getDocs(modulesQuery)
 
   // Um doc que falha na validação é ignorado em vez de derrubar a lista
