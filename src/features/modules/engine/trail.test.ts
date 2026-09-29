@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { calculateModuleProgress, getModuleStatus, QUIZ_PASSING_SCORE } from './trail'
+import { calculateModuleProgress, getModuleStatus } from './trail'
+import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { CONTENT_MODULES } from '@/content'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument, ProgressMap } from '@/types/progress.types'
@@ -18,6 +19,7 @@ function buildModule(overrides: Partial<ModuleWithId> = {}): ModuleWithId {
     totalLessons: 3,
     isActive: true,
     requiredModuleId: null,
+    hasSimulation: true,
     ...overrides,
   }
 }
@@ -97,6 +99,30 @@ describe('getModuleStatus', () => {
     }
 
     expect(getModuleStatus(module, progressMap, [module])).toBe('completed')
+  })
+
+  it('marca como completed sem simulação quando o módulo não tem uma', () => {
+    const module = buildModule({ totalLessons: 2, hasSimulation: false })
+    const progressMap: ProgressMap = {
+      'modulo-01': buildProgress({
+        lessonsCompleted: ['licao-01', 'licao-02'],
+        quizBestScore: QUIZ_PASSING_SCORE,
+      }),
+    }
+
+    expect(getModuleStatus(module, progressMap, [module])).toBe('completed')
+  })
+
+  it('não marca como completed sem simulação quando o módulo tem uma', () => {
+    const module = buildModule({ totalLessons: 2, hasSimulation: true })
+    const progressMap: ProgressMap = {
+      'modulo-01': buildProgress({
+        lessonsCompleted: ['licao-01', 'licao-02'],
+        quizBestScore: QUIZ_PASSING_SCORE,
+      }),
+    }
+
+    expect(getModuleStatus(module, progressMap, [module])).toBe('in_progress')
   })
 
   it('não marca como completed se o quiz não atingiu a nota mínima', () => {
@@ -183,6 +209,16 @@ describe('calculateModuleProgress', () => {
     expect(calculateModuleProgress(module, progress)).toBe(100)
   })
 
+  it('não conta simulação como etapa em módulo sem simulação', () => {
+    const module = buildModule({ totalLessons: 2, hasSimulation: false })
+    const progress = buildProgress({
+      lessonsCompleted: ['licao-01', 'licao-02'],
+      quizBestScore: QUIZ_PASSING_SCORE,
+    })
+
+    expect(calculateModuleProgress(module, progress)).toBe(100)
+  })
+
   it('não deixa o percentual passar de 100 mesmo com lições duplicadas no array', () => {
     const module = buildModule({ totalLessons: 1 })
     const progress = buildProgress({ lessonsCompleted: ['licao-01', 'licao-01', 'licao-01'] })
@@ -220,6 +256,20 @@ describe('cadeia de dependências dos cinco módulos reais', () => {
     progressMap['modulo-01'] = completeProgress(modulo01.totalLessons)
     expect(getModuleStatus(modulo02, progressMap, modules)).toBe('available')
     expect(getModuleStatus(modulo03, progressMap, modules)).toBe('locked')
+  })
+
+  it('libera o módulo 2 com o módulo 1 completo sem simulação', () => {
+    const progressMap: ProgressMap = {
+      'modulo-01': buildProgress({
+        lessonsCompleted: Array.from(
+          { length: getModule('modulo-01').totalLessons },
+          (_, index) => `licao-0${index + 1}`
+        ),
+        quizBestScore: QUIZ_PASSING_SCORE,
+      }),
+    }
+
+    expect(getModuleStatus(getModule('modulo-02'), progressMap, modules)).toBe('available')
   })
 
   it('libera o módulo 5 só quando todos os anteriores estão completos', () => {

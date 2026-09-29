@@ -22,5 +22,5 @@ export const quiz03Questions: QuizQuestion[] = [
   { id: 'q7', type: 'scenario', scenario: '[PENDENTE] Lorem ipsum dolor sit amet.', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
   { id: 'q8', type: 'scenario', scenario: '[PENDENTE] Lorem ipsum dolor sit amet.', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
   { id: 'q9', type: 'scenario', scenario: '[PENDENTE] Lorem ipsum dolor sit amet.', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
-  { id: 'q10', type: 'visual', imageSrc: '[PENDENTE] Lorem ipsum.', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
+  { id: 'q10', type: 'visual', imageSrc: '[PENDENTE] Lorem ipsum.', imageAlt: '[PENDENTE] Lorem ipsum dolor sit amet.', prompt: '[PENDENTE] Lorem ipsum dolor sit amet.', options: pendingOptions, correctOptionId: 'a', explanation: '[PENDENTE] Lorem ipsum dolor sit amet.' },
 ]

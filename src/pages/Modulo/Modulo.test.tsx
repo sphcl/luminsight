@@ -88,4 +88,35 @@ describe('Modulo', () => {
     const startLink = await screen.findByRole('link', { name: 'Começar módulo' })
     expect(startLink).toHaveAttribute('href', '/modulos/modulo-01/licoes/licao-01')
   })
+
+  it('libera o link do quiz só com todas as lições concluídas', async () => {
+    vi.mocked(getUserProgress).mockResolvedValue({
+      'modulo-01': buildProgress({ lessonsCompleted: ['licao-01', 'licao-02'] }),
+    })
+    renderModulo('modulo-01')
+
+    expect(await screen.findByRole('link', { name: /Quiz do módulo/ })).toHaveAttribute(
+      'href',
+      '/quiz/modulo-01'
+    )
+  })
+
+  it('mostra o quiz bloqueado enquanto faltam lições', async () => {
+    renderModulo('modulo-01')
+
+    expect(
+      await screen.findByText('Conclua todas as lições para liberar o quiz.')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Quiz do módulo/ })).not.toBeInTheDocument()
+  })
+
+  it('esconde o card de simulação em módulo sem simulação', async () => {
+    vi.mocked(getModules).mockResolvedValue(
+      buildTrail().map((module) => ({ ...module, hasSimulation: false }))
+    )
+    renderModulo('modulo-01')
+
+    await screen.findByText('Conclua todas as lições para liberar o quiz.')
+    expect(screen.queryByText('Simulação')).not.toBeInTheDocument()
+  })
 })

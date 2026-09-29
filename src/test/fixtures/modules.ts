@@ -24,6 +24,7 @@ export function buildModule(overrides: Partial<ModuleWithId> = {}): ModuleWithId
     totalLessons: 2,
     isActive: true,
     requiredModuleId: null,
+    hasSimulation: true,
     ...overrides,
   }
 }

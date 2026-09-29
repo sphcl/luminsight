@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Badge, Card, ProgressBar, Skeleton } from '@/components/ui'
-import { ROUTES, buildLessonRoute } from '@/constants/routes'
+import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
+import { ROUTES, buildLessonRoute, buildQuizRoute } from '@/constants/routes'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
 import { useModuleAccess, type ModuleAccessData } from '@/features/modules/hooks/useModuleAccess'
 import { formatMinutes, getDifficultyLabel, getStatusBadge } from '@/features/modules/labels'
@@ -48,12 +49,14 @@ function ModuleView({
   moduleStatus,
   progressPercent,
   completedLessonIds,
+  progress,
 }: ModuleAccessData) {
   const completed = new Set(completedLessonIds)
   const nextLesson = lessons.find((lesson) => !completed.has(lesson.id)) ?? lessons[0]
   const hasStarted = lessons.some((lesson) => completed.has(lesson.id))
   const allLessonsDone = lessons.length > 0 && lessons.every((lesson) => completed.has(lesson.id))
   const statusBadge = getStatusBadge(moduleStatus)
+  const quizBestScore = progress?.quizBestScore ?? null
 
   let primaryLabel = 'Começar módulo'
   if (allLessonsDone) primaryLabel = 'Revisar lições'
@@ -131,21 +134,54 @@ function ModuleView({
           Prática
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <UnavailableActivity
-            title="Quiz do módulo"
-            description="Perguntas para fixar o que você aprendeu."
-          />
-          <UnavailableActivity
-            title="Simulação"
-            description="Um cenário realista para colocar em prática."
-          />
+          {allLessonsDone ? (
+            <Link
+              to={buildQuizRoute(module.id)}
+              className="rounded-card border border-surface-border bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-slate-900">Quiz do módulo</span>
+                {quizBestScore !== null && (
+                  <Badge variant={quizBestScore >= QUIZ_PASSING_SCORE ? 'success' : 'warning'}>
+                    Melhor nota: {quizBestScore}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                {quizBestScore === null
+                  ? 'Perguntas para fixar o que você aprendeu.'
+                  : 'Refaça quando quiser para melhorar sua nota.'}
+              </p>
+            </Link>
+          ) : (
+            <UnavailableActivity
+              title="Quiz do módulo"
+              description="Conclua todas as lições para liberar o quiz."
+              badge="Bloqueado"
+            />
+          )}
+          {module.hasSimulation && (
+            <UnavailableActivity
+              title="Simulação"
+              description="Um cenário realista para colocar em prática."
+              badge="Ainda não disponível"
+            />
+          )}
         </div>
       </section>
     </div>
   )
 }
 
-function UnavailableActivity({ title, description }: { title: string; description: string }) {
+function UnavailableActivity({
+  title,
+  description,
+  badge,
+}: {
+  title: string
+  description: string
+  badge: string
+}) {
   return (
     <div
       aria-disabled="true"
@@ -153,7 +189,7 @@ function UnavailableActivity({ title, description }: { title: string; descriptio
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium text-slate-700">{title}</span>
-        <Badge>Ainda não disponível</Badge>
+        <Badge>{badge}</Badge>
       </div>
       <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>

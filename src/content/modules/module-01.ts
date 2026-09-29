@@ -13,6 +13,7 @@ export const module01: ModuleDocument = {
   estimatedMinutes: 30,
   totalLessons: 3,
   isActive: false,
+  hasSimulation: false,
   requiredModuleId: null,
 }
 

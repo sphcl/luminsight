@@ -15,6 +15,7 @@ export interface ModuleDocument {
   // Aponta para o id do módulo que precisa estar concluído antes deste
   // liberar na trilha. null = módulo sempre disponível (ex.: o primeiro).
   requiredModuleId: string | null
+  hasSimulation: boolean
 }
 
 export type HighlightVariant = 'info' | 'warning' | 'danger'
