@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { UserDocument } from '@/types/user.types'
+import { onboardingProfileSchema } from '@/features/onboarding/schemas/onboarding.schema'
+import type { OnboardingProfile, UserDocument } from '@/types/user.types'
 
 const USERS_COLLECTION = 'users'
 
@@ -54,4 +55,18 @@ export async function ensureUserDocument(input: UserProfileInput): Promise<UserD
   }
 
   return createUserDocument(input)
+}
+
+export async function completeOnboarding(
+  uid: string,
+  answers: unknown
+): Promise<OnboardingProfile> {
+  const profile = onboardingProfileSchema.parse(answers)
+
+  await updateDoc(doc(db, USERS_COLLECTION, uid), {
+    onboardingCompleted: true,
+    onboardingProfile: profile,
+  })
+
+  return profile
 }
