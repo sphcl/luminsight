@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { Licao } from './Licao'
 import { useAuth } from '@/hooks/useAuth'
@@ -13,6 +13,9 @@ vi.mock('@/services/progress.service', () => ({
   getUserProgress: vi.fn(),
   markLessonCompleted: vi.fn(),
 }))
+
+// O intervalo real do timer dispara a cada 1s, então dou folga pra pelo menos um tick.
+const TICK_TIMEOUT = 3_000
 
 function renderLicao(path: string) {
   return render(
@@ -28,8 +31,8 @@ function renderLicao(path: string) {
 
 describe('Licao', () => {
   beforeEach(() => {
-    // Só finjo setInterval e Date pra que o waitFor do findBy continue usando setTimeout real.
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    // Finjo só o Date: com setInterval falso o effect do timer às vezes nem registrava antes de eu avançar o relógio.
+    vi.useFakeTimers({ toFake: ['Date'] })
     vi.mocked(useAuth).mockReturnValue({
       user: TEST_USER,
       userDocument: null,
@@ -65,24 +68,20 @@ describe('Licao', () => {
     expect(button).toBeDisabled()
     expect(screen.getByText('4:00')).toBeInTheDocument()
 
-    act(() => {
-      vi.advanceTimersByTime(239_000)
-    })
+    vi.advanceTimersByTime(239_000)
+    expect(await screen.findByText('0:01', {}, { timeout: TICK_TIMEOUT })).toBeInTheDocument()
     expect(button).toBeDisabled()
 
-    act(() => {
-      vi.advanceTimersByTime(1_000)
-    })
-    expect(button).toBeEnabled()
+    vi.advanceTimersByTime(1_000)
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: TICK_TIMEOUT })
   })
 
   it('chama markLessonCompleted ao concluir e navega para a próxima lição', async () => {
     renderLicao('/modulos/modulo-01/licoes/licao-01')
 
     const button = await screen.findByRole('button', { name: 'Concluir e ir para a próxima' })
-    act(() => {
-      vi.advanceTimersByTime(240_000)
-    })
+    vi.advanceTimersByTime(240_000)
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: TICK_TIMEOUT })
     fireEvent.click(button)
 
     expect(await screen.findByRole('heading', { name: 'Segunda lição' })).toBeInTheDocument()
@@ -93,9 +92,8 @@ describe('Licao', () => {
     renderLicao('/modulos/modulo-01/licoes/licao-02')
 
     const button = await screen.findByRole('button', { name: 'Concluir e voltar ao módulo' })
-    act(() => {
-      vi.advanceTimersByTime(240_000)
-    })
+    vi.advanceTimersByTime(240_000)
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: TICK_TIMEOUT })
     fireEvent.click(button)
 
     expect(await screen.findByText('Página do módulo')).toBeInTheDocument()
