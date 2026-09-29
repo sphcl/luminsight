@@ -15,6 +15,19 @@ export interface UserDocument {
   completedSimulations: string[]
   totalQuizzesCompleted: number
   role: 'user'
+  // Opcional porque contas criadas antes do onboarding existir não têm esse campo.
+  onboardingProfile?: OnboardingProfile
+}
+
+export type SecurityKnowledge = 'nenhum' | 'basico' | 'intermediario' | 'avancado'
+export type ScamExperience = 'sim' | 'quase' | 'nao' | 'nao_sei'
+export type LearningGoal =
+  'golpes_whatsapp' | 'phishing' | 'senhas' | 'compras_online' | 'proteger_familia'
+
+export interface OnboardingProfile {
+  securityKnowledge: SecurityKnowledge
+  scamExperience: ScamExperience
+  learningGoals: LearningGoal[]
 }
 
 // Recorte do usuário autenticado que nos interessa, direto do Firebase Auth
