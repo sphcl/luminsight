@@ -16,8 +16,8 @@ const scenes: SimulationScene[] = [
     id: 'cena-01',
     order: 1,
     messages: [
-      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
-      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
+      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 600 },
+      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 1200 },
     ],
     decision: pendingDecision,
   },
@@ -25,8 +25,8 @@ const scenes: SimulationScene[] = [
     id: 'cena-02',
     order: 2,
     messages: [
-      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
-      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
+      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 600 },
+      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 1200 },
     ],
     decision: pendingDecision,
   },
@@ -34,8 +34,8 @@ const scenes: SimulationScene[] = [
     id: 'cena-03',
     order: 3,
     messages: [
-      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
-      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.' },
+      { sender: 'attacker', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 600 },
+      { sender: 'system', content: '[PENDENTE] Lorem ipsum dolor sit amet.', delay: 1200 },
     ],
     decision: pendingDecision,
   },
@@ -49,6 +49,7 @@ export const simulation01: SimulationDocument = {
   title: '[PENDENTE] Lorem ipsum dolor sit amet.',
   description: '[PENDENTE] Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
   format: 'chat',
+  contact: { name: 'Contato Desconhecido', address: '(00) 90000-0001' },
   estimatedMinutes: 10,
   scenes,
 }

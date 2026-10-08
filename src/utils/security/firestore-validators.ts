@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { Timestamp } from 'firebase/firestore'
 import type { ModuleDocument, LessonDocument } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
+import type { SimulationDocument } from '@/types/simulation.types'
 
 // Dado lido do Firestore não é confiável por padrão: um doc gravado errado
 // (script de seed com bug, edição manual no console) chegaria direto na UI
@@ -64,6 +65,43 @@ const progressSchema = z.object({
   lastUpdatedAt: timestampSchema,
 }) satisfies z.ZodType<ProgressDocument>
 
+const simulationMessageSchema = z.object({
+  sender: z.enum(['attacker', 'system']),
+  content: z.string(),
+  delay: z.number().nonnegative().optional(),
+  subject: z.string().optional(),
+})
+
+const simulationSceneSchema = z.object({
+  id: z.string(),
+  order: z.number(),
+  messages: z.array(simulationMessageSchema),
+  decision: z.object({
+    prompt: z.string(),
+    options: z
+      .array(
+        z.object({
+          id: z.string(),
+          text: z.string(),
+          isCorrect: z.boolean(),
+          feedback: z.string(),
+        })
+      )
+      .min(1),
+  }),
+})
+
+// O id vem do path do documento, então não faz parte do schema.
+const simulationSchema = z.object({
+  moduleId: z.string(),
+  title: z.string(),
+  description: z.string(),
+  format: z.enum(['chat', 'email', 'call']),
+  contact: z.object({ name: z.string(), address: z.string() }),
+  estimatedMinutes: z.number(),
+  scenes: z.array(simulationSceneSchema).min(1),
+}) satisfies z.ZodType<Omit<SimulationDocument, 'id'>>
+
 // Nunca lança: um documento malformado vira null, e quem chamou decide o que
 // fazer (pular o item, mostrar erro genérico, etc.) em vez de derrubar a tela.
 export function parseModule(raw: unknown): ModuleDocument | null {
@@ -79,4 +117,13 @@ export function parseLesson(raw: unknown): LessonDocument | null {
 export function parseProgress(raw: unknown): ProgressDocument | null {
   const result = progressSchema.safeParse(raw)
   return result.success ? result.data : null
+}
+
+export function parseSimulation(raw: unknown): Omit<SimulationDocument, 'id'> | null {
+  const result = simulationSchema.safeParse(raw)
+  if (!result.success) return null
+
+  // Ordeno aqui pra tela nunca depender da ordem em que o array foi gravado.
+  const scenes = [...result.data.scenes].sort((a, b) => a.order - b.order)
+  return { ...result.data, scenes }
 }

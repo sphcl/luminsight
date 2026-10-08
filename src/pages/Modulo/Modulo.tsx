@@ -161,11 +161,18 @@ function ModuleView({
             />
           )}
           {module.hasSimulation && (
-            <UnavailableActivity
-              title="Simulação"
-              description="Um cenário realista para colocar em prática."
-              badge="Ainda não disponível"
-            />
+            <Link
+              to={ROUTES.SIMULACOES}
+              className="rounded-card border border-surface-border bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-slate-900">Simulação</span>
+                {progress?.simulationCompleted && <Badge variant="success">Concluída</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Um cenário realista para colocar em prática.
+              </p>
+            </Link>
           )}
         </div>
       </section>

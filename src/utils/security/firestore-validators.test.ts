@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { parseModule, parseLesson, parseProgress } from './firestore-validators'
+import { parseModule, parseLesson, parseProgress, parseSimulation } from './firestore-validators'
+import { buildScene, buildSimulation } from '@/test/fixtures/simulation'
 
 const validModule = {
   title: 'Módulo 4',
@@ -124,5 +125,35 @@ describe('parseProgress', () => {
   it('aceita completedAt nulo mas rejeita completedAt com tipo errado', () => {
     expect(parseProgress(validProgress)).not.toBeNull()
     expect(parseProgress({ ...validProgress, completedAt: 'agora' })).toBeNull()
+  })
+})
+
+describe('parseSimulation', () => {
+  const { id, ...validSimulation } = buildSimulation()
+
+  it('aceita uma simulação válida e descarta o id gravado junto', () => {
+    expect(parseSimulation({ id, ...validSimulation })).toEqual(validSimulation)
+  })
+
+  it('ordena as cenas pelo campo order', () => {
+    const parsed = parseSimulation({
+      ...validSimulation,
+      scenes: [buildScene(2), buildScene(1)],
+    })
+    expect(parsed?.scenes.map((scene) => scene.id)).toEqual(['cena-01', 'cena-02'])
+  })
+
+  it('rejeita formato desconhecido', () => {
+    expect(parseSimulation({ ...validSimulation, format: 'sms' })).toBeNull()
+  })
+
+  it('rejeita simulação sem contact', () => {
+    const { contact, ...withoutContact } = validSimulation
+    expect(parseSimulation(withoutContact)).toBeNull()
+  })
+
+  it('rejeita delay negativo', () => {
+    const scene = buildScene(1, { messages: [{ sender: 'attacker', content: 'Oi', delay: -1 }] })
+    expect(parseSimulation({ ...validSimulation, scenes: [scene] })).toBeNull()
   })
 })
