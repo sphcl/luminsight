@@ -71,6 +71,7 @@ function buildSimulation(overrides: Partial<SimulationDocument> = {}): Simulatio
     title: 'Simulação',
     description: 'Descrição',
     format: 'chat',
+    contact: { name: 'Contato', address: 'contato@exemplo.example' },
     estimatedMinutes: 10,
     scenes: [
       {
@@ -187,6 +188,19 @@ describe('validateContent', () => {
       ],
     })
     expect(validateContent([], [simulation])).not.toEqual([])
+  })
+
+  it('acusa email de simulação fora de domínio reservado', () => {
+    const simulation = buildSimulation({
+      contact: { name: 'Contato', address: 'contato@empresa.com.br' },
+    })
+    expect(validateContent([], [simulation])).not.toEqual([])
+  })
+
+  it('aceita telefone e email de domínio reservado', () => {
+    const phone = buildSimulation({ contact: { name: 'Contato', address: '(00) 90000-0000' } })
+    const email = buildSimulation({ contact: { name: 'Contato', address: 'a@golpe.invalid' } })
+    expect(validateContent([], [phone, email])).toEqual([])
   })
 
   it('reprova módulo com [PENDENTE] e isActive: true', () => {

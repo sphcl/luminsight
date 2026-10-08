@@ -4,6 +4,14 @@ import type { ContentModuleEntry } from './index'
 
 const PENDING_MARKER = '[PENDENTE]'
 
+// Só aceito TLD reservado pela RFC 2606 pra nenhum endereço de simulação existir de verdade.
+const RESERVED_EMAIL_TLDS = ['.example', '.invalid', '.test']
+
+function usesReservedDomain(address: string): boolean {
+  const domain = address.slice(address.lastIndexOf('@') + 1).toLowerCase()
+  return RESERVED_EMAIL_TLDS.some((tld) => domain.endsWith(tld))
+}
+
 // Só esses dois tipos têm número fixo de alternativas definido pelo layout da tela de quiz.
 const EXPECTED_OPTION_COUNT: Partial<Record<QuizQuestion['type'], number>> = {
   multiple_choice: 4,
@@ -102,6 +110,13 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
   }
 
   for (const simulation of simulations) {
+    const { address } = simulation.contact
+    if (address.includes('@') && !usesReservedDomain(address)) {
+      errors.push(
+        `Simulação "${simulation.id}": email "${address}" precisa usar domínio reservado (${RESERVED_EMAIL_TLDS.join(', ')}).`
+      )
+    }
+
     for (const scene of simulation.scenes) {
       const hasCorrectOption = scene.decision.options.some((option) => option.isCorrect)
       if (!hasCorrectOption) {

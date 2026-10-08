@@ -3,7 +3,15 @@ export type SimulationFormat = 'chat' | 'email' | 'call'
 export interface SimulationMessage {
   sender: 'attacker' | 'system'
   content: string
+  // Em milissegundos, contados a partir da mensagem anterior da cena.
   delay?: number
+  subject?: string
+}
+
+// Sempre fictício: no email o address precisa ser de domínio reservado (.example, .invalid, .test).
+export interface SimulationContact {
+  name: string
+  address: string
 }
 
 export interface SimulationDecisionOption {
@@ -32,6 +40,7 @@ export interface SimulationDocument {
   title: string
   description: string
   format: SimulationFormat
+  contact: SimulationContact
   estimatedMinutes: number
   scenes: SimulationScene[]
 }
