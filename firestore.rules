@@ -25,7 +25,12 @@ service cloud.firestore {
     // Ninguém cria a própria conta já como admin ou com módulos "concluídos".
     function isValidUserCreate() {
       let data = request.resource.data;
-      return data.role == 'user'
+      return data.keys().hasOnly([
+          'displayName', 'email', 'photoURL', 'createdAt', 'lastLoginAt',
+          'onboardingCompleted', 'completedModules', 'completedLessons',
+          'completedSimulations', 'totalQuizzesCompleted', 'role'
+        ])
+        && data.role == 'user'
         && data.displayName is string
         && data.email is string
         && (data.photoURL == null || data.photoURL is string)
@@ -40,6 +45,49 @@ service cloud.firestore {
 
     function roleIsImmutable() {
       return request.resource.data.role == resource.data.role;
+    }
+
+    function changedUserKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Mesmas regras do displayNameField em auth.schemas.ts: o Zod já entrega o nome sem espaço nas pontas.
+    function isValidDisplayName(name) {
+      return name is string
+        && name.size() >= 2
+        && name.size() <= 60
+        && name == name.trim()
+        && name.matches("^[\\p{L}\\s'-]+$");
+    }
+
+    // Mesmos valores do onboarding.schema.ts. Só valores do enum, nunca texto livre.
+    function isValidOnboardingProfile(profile) {
+      return profile is map
+        && profile.keys().hasOnly(['securityKnowledge', 'scamExperience', 'motivation'])
+        && profile.securityKnowledge in ['iniciante', 'intermediario', 'avancado']
+        && profile.scamExperience in ['sim', 'nao', 'prefiro_nao_responder']
+        && profile.motivation in [
+          'aprender_basico', 'proteger_familia', 'interesse_profissional', 'curiosidade'
+        ];
+    }
+
+    // O cliente só faz três tipos de update no documento do usuário, e cada um mexe
+    // exatamente nos seus campos. Qualquer combinação diferente cai fora.
+    function isLoginUpdate() {
+      return changedUserKeys().hasOnly(['lastLoginAt'])
+        && isServerTimestamp(request.resource.data.lastLoginAt);
+    }
+
+    function isOnboardingCompletion() {
+      return resource.data.onboardingCompleted == false
+        && changedUserKeys().hasOnly(['onboardingCompleted', 'onboardingProfile'])
+        && request.resource.data.onboardingCompleted == true
+        && isValidOnboardingProfile(request.resource.data.onboardingProfile);
+    }
+
+    function isDisplayNameUpdate() {
+      return changedUserKeys().hasOnly(['displayName'])
+        && isValidDisplayName(request.resource.data.displayName);
     }
 
     function isValidProgressShape() {
@@ -62,7 +110,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserCreate();
-      allow update: if isOwner(userId) && roleIsImmutable();
+      allow update: if isOwner(userId)
+        && roleIsImmutable()
+        && (isLoginUpdate() || isOnboardingCompletion() || isDisplayNameUpdate());
       allow delete: if false;
 
       match /progress/{moduleId} {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { calculateModuleProgress, getModuleStatus } from './trail'
+import { calculateModuleProgress, calculateTrailProgress, getModuleStatus } from './trail'
 import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { CONTENT_MODULES } from '@/content'
 import type { ModuleWithId } from '@/types/module.types'
@@ -228,7 +228,10 @@ describe('calculateModuleProgress', () => {
 })
 
 describe('cadeia de dependências dos cinco módulos reais', () => {
-  const modules: ModuleWithId[] = CONTENT_MODULES.map((entry) => ({ ...entry.module, id: entry.id }))
+  const modules: ModuleWithId[] = CONTENT_MODULES.map((entry) => ({
+    ...entry.module,
+    id: entry.id,
+  }))
 
   function getModule(id: string): ModuleWithId {
     const found = modules.find((module) => module.id === id)
@@ -281,5 +284,36 @@ describe('cadeia de dependências dos cinco módulos reais', () => {
     }
 
     expect(getModuleStatus(getModule('modulo-05'), progressMap, modules)).toBe('available')
+  })
+})
+
+describe('calculateTrailProgress', () => {
+  it('retorna 0 sem módulos', () => {
+    expect(calculateTrailProgress([], {})).toBe(0)
+  })
+
+  it('soma as etapas de todos os módulos em vez de tirar média', () => {
+    // 3 lições + quiz + simulação = 5 etapas; 1 lição + quiz = 2 etapas; total 7
+    const big = buildModule({ id: 'modulo-01', totalLessons: 3, hasSimulation: true })
+    const small = buildModule({ id: 'modulo-02', totalLessons: 1, hasSimulation: false })
+    const progressMap: ProgressMap = {
+      'modulo-02': buildProgress({ lessonsCompleted: ['l1'], quizBestScore: QUIZ_PASSING_SCORE }),
+    }
+
+    // Média dos módulos daria 50%, somando etapas dá 2 de 7
+    expect(calculateTrailProgress([big, small], progressMap)).toBe(29)
+  })
+
+  it('retorna 100 com a trilha toda concluída', () => {
+    const module = buildModule({ totalLessons: 1, hasSimulation: true })
+    const progressMap: ProgressMap = {
+      [module.id]: buildProgress({
+        lessonsCompleted: ['l1'],
+        quizBestScore: 100,
+        simulationCompleted: true,
+      }),
+    }
+
+    expect(calculateTrailProgress([module], progressMap)).toBe(100)
   })
 })

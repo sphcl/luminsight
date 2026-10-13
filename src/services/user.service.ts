@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { onboardingProfileSchema } from '@/features/onboarding/schemas/onboarding.schema'
+import { updateProfileSchema } from '@/features/profile/schemas/profile.schema'
 import type { OnboardingProfile, UserDocument } from '@/types/user.types'
 
 const USERS_COLLECTION = 'users'
@@ -69,4 +70,13 @@ export async function completeOnboarding(
   })
 
   return profile
+}
+
+export async function updateDisplayName(uid: string, input: unknown): Promise<string> {
+  const { displayName } = updateProfileSchema.parse(input)
+
+  // Monto o objeto na mão em vez de repassar o input, assim nada além do nome chega no documento.
+  await updateDoc(doc(db, USERS_COLLECTION, uid), { displayName })
+
+  return displayName
 }

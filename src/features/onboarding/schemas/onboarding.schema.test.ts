@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { onboardingProfileSchema } from './onboarding.schema'
 
 const validProfile = {
-  securityKnowledge: 'basico',
-  scamExperience: 'quase',
-  learningGoals: ['phishing', 'senhas'],
+  securityKnowledge: 'iniciante',
+  scamExperience: 'prefiro_nao_responder',
+  motivation: 'proteger_familia',
 }
 
 describe('onboardingProfileSchema', () => {
@@ -20,24 +20,21 @@ describe('onboardingProfileSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejeita tema de aprendizado fora das opções', () => {
+  it('rejeita texto livre na resposta sobre golpe', () => {
     const result = onboardingProfileSchema.safeParse({
       ...validProfile,
-      learningGoals: ['phishing', 'qualquer_coisa'],
+      scamExperience: 'caí no golpe do pix semana passada',
     })
     expect(result.success).toBe(false)
   })
 
-  it('rejeita lista de temas vazia', () => {
-    const result = onboardingProfileSchema.safeParse({ ...validProfile, learningGoals: [] })
+  it('rejeita motivação fora das opções', () => {
+    const result = onboardingProfileSchema.safeParse({ ...validProfile, motivation: 'outro' })
     expect(result.success).toBe(false)
   })
 
-  it('rejeita tema repetido', () => {
-    const result = onboardingProfileSchema.safeParse({
-      ...validProfile,
-      learningGoals: ['phishing', 'phishing'],
-    })
+  it('rejeita valor antigo que saiu das opções', () => {
+    const result = onboardingProfileSchema.safeParse({ ...validProfile, scamExperience: 'quase' })
     expect(result.success).toBe(false)
   })
 
