@@ -47,7 +47,7 @@ export function useSimulation(
   // Ref e não state pelo mesmo motivo do quiz: dois cliques no mesmo render finalizariam duas vezes.
   const hasFinishedRef = useRef(false)
 
-  // eslint-disable-next-line security/detect-object-injection - índice numérico controlado pelo hook
+  // eslint-disable-next-line security/detect-object-injection -- índice numérico controlado pelo hook
   const currentScene = scenes[sceneIndex]
   const totalMessages = currentScene?.messages.length ?? 0
   const visibleCount = prefersReducedMotion ? totalMessages : Math.min(revealedCount, totalMessages)
