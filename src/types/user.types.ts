@@ -19,15 +19,15 @@ export interface UserDocument {
   onboardingProfile?: OnboardingProfile
 }
 
-export type SecurityKnowledge = 'nenhum' | 'basico' | 'intermediario' | 'avancado'
-export type ScamExperience = 'sim' | 'quase' | 'nao' | 'nao_sei'
-export type LearningGoal =
-  'golpes_whatsapp' | 'phishing' | 'senhas' | 'compras_online' | 'proteger_familia'
+export type SecurityKnowledge = 'iniciante' | 'intermediario' | 'avancado'
+export type ScamExperience = 'sim' | 'nao' | 'prefiro_nao_responder'
+export type OnboardingMotivation =
+  'aprender_basico' | 'proteger_familia' | 'interesse_profissional' | 'curiosidade'
 
 export interface OnboardingProfile {
   securityKnowledge: SecurityKnowledge
   scamExperience: ScamExperience
-  learningGoals: LearningGoal[]
+  motivation: OnboardingMotivation
 }
 
 // Recorte do usuário autenticado que nos interessa, direto do Firebase Auth

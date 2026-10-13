@@ -11,6 +11,14 @@ const emailField = z
   .max(254, 'Email muito longo.') // limite do RFC 5321, evita payloads absurdos
   .email('Informe um email válido.')
 
+// O Perfil reaproveita esse campo, e o firestore.rules repete as mesmas regras em isValidDisplayName.
+export const displayNameField = z
+  .string()
+  .trim()
+  .min(2, 'O nome deve ter pelo menos 2 caracteres.')
+  .max(60, 'O nome deve ter no máximo 60 caracteres.')
+  .regex(NAME_REGEX, 'O nome não pode conter números ou símbolos.')
+
 export const loginSchema = z.object({
   email: emailField,
   // Na tela de login não validamos regra de senha (tamanho, complexidade):
@@ -22,12 +30,7 @@ export type LoginInput = z.infer<typeof loginSchema>
 
 export const registerSchema = z
   .object({
-    displayName: z
-      .string()
-      .trim()
-      .min(2, 'O nome deve ter pelo menos 2 caracteres.')
-      .max(60, 'O nome deve ter no máximo 60 caracteres.')
-      .regex(NAME_REGEX, 'O nome não pode conter números ou símbolos.'),
+    displayName: displayNameField,
     email: emailField,
     // No cadastro sim validamos tamanho: min 8 é segurança básica,
     // max 128 evita DoS por hashing (senhas gigantes custam CPU no bcrypt/scrypt do Firebase)

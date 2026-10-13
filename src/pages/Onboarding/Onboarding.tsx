@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ZodError } from 'zod'
 import { Button, Card, ProgressBar } from '@/components/ui'
+import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  LEARNING_GOAL_OPTIONS,
+  MOTIVATION_OPTIONS,
   SCAM_EXPERIENCE_OPTIONS,
   SECURITY_KNOWLEDGE_OPTIONS,
 } from '@/features/onboarding/schemas/onboarding.schema'
@@ -11,9 +13,37 @@ import { completeOnboarding } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
 import { mapFirestoreError } from '@/utils/security/errors'
 import { cn } from '@/utils/helpers/classnames'
-import type { LearningGoal, ScamExperience, SecurityKnowledge } from '@/types/user.types'
+import type { OnboardingProfile } from '@/types/user.types'
 
-const TOTAL_STEPS = 3
+type Answers = { [K in keyof OnboardingProfile]: OnboardingProfile[K] | null }
+
+interface Step<K extends keyof OnboardingProfile> {
+  field: K
+  question: string
+  options: { value: OnboardingProfile[K]; label: string }[]
+}
+
+type AnyStep = { [K in keyof OnboardingProfile]: Step<K> }[keyof OnboardingProfile]
+
+const STEPS: [AnyStep, ...AnyStep[]] = [
+  {
+    field: 'securityKnowledge',
+    question: 'Qual seu nível de conhecimento sobre segurança digital?',
+    options: SECURITY_KNOWLEDGE_OPTIONS,
+  },
+  {
+    field: 'scamExperience',
+    question: 'Você ou alguém próximo já caiu em um golpe digital?',
+    options: SCAM_EXPERIENCE_OPTIONS,
+  },
+  {
+    field: 'motivation',
+    question: 'O que te trouxe aqui?',
+    options: MOTIVATION_OPTIONS,
+  },
+]
+
+const EMPTY_ANSWERS: Answers = { securityKnowledge: null, scamExperience: null, motivation: null }
 
 const optionClass =
   'flex cursor-pointer items-center gap-3 rounded-lg border border-surface-border bg-white p-3 text-sm text-slate-700 transition-colors hover:bg-surface-muted has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500'
@@ -21,43 +51,31 @@ const optionClass =
 export function Onboarding() {
   const { user, userDocument } = useAuth()
   const setUserDocument = useAuthStore((state) => state.setUserDocument)
-  const [step, setStep] = useState(0)
-  const [securityKnowledge, setSecurityKnowledge] = useState<SecurityKnowledge | null>(null)
-  const [scamExperience, setScamExperience] = useState<ScamExperience | null>(null)
-  const [learningGoals, setLearningGoals] = useState<LearningGoal[]>([])
+  const navigate = useNavigate()
+  const [stepIndex, setStepIndex] = useState(0)
+  const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isStepAnswered = [
-    securityKnowledge !== null,
-    scamExperience !== null,
-    learningGoals.length > 0,
-  ]
-  // eslint-disable-next-line security/detect-object-injection -- step é índice numérico controlado
-  const canAdvance = isStepAnswered[step] ?? false
-  const isLastStep = step === TOTAL_STEPS - 1
-
-  function toggleGoal(goal: LearningGoal) {
-    setLearningGoals((current) =>
-      current.includes(goal) ? current.filter((item) => item !== goal) : [...current, goal]
-    )
-  }
+  // eslint-disable-next-line security/detect-object-injection -- índice numérico controlado pelo componente
+  const step = STEPS[stepIndex] ?? STEPS[0]
+  const isLastStep = stepIndex === STEPS.length - 1
+  const currentAnswer = answers[step.field]
+  const allAnswered = Object.values(answers).every((answer) => answer !== null)
+  const canAdvance = isLastStep ? allAnswered : currentAnswer !== null
 
   async function handleFinish() {
-    if (!user) return
+    if (!user || !allAnswered) return
 
     setIsSaving(true)
     setError(null)
     try {
-      const profile = await completeOnboarding(user.uid, {
-        securityKnowledge,
-        scamExperience,
-        learningGoals,
-      })
+      const profile = await completeOnboarding(user.uid, answers)
 
       if (userDocument) {
         setUserDocument({ ...userDocument, onboardingCompleted: true, onboardingProfile: profile })
       }
+      navigate(ROUTES.DASHBOARD, { replace: true })
     } catch (caughtError) {
       if (caughtError instanceof ZodError) {
         setError('Revise suas respostas e tente de novo.')
@@ -77,73 +95,28 @@ export function Onboarding() {
           Três perguntas rápidas pra gente entender seu ponto de partida.
         </p>
         <ProgressBar
-          value={step + 1}
-          max={TOTAL_STEPS}
-          label={`Passo ${step + 1} de ${TOTAL_STEPS}`}
+          value={stepIndex + 1}
+          max={STEPS.length}
+          label={`Passo ${stepIndex + 1} de ${STEPS.length}`}
         />
       </div>
 
-      {step === 0 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-3 font-semibold text-slate-900">
-            Quanto você entende de segurança digital?
-          </legend>
-          {SECURITY_KNOWLEDGE_OPTIONS.map((option) => (
-            <label key={option.value} className={optionClass}>
-              <input
-                type="radio"
-                name="securityKnowledge"
-                value={option.value}
-                checked={securityKnowledge === option.value}
-                onChange={() => setSecurityKnowledge(option.value)}
-                className="accent-primary-600"
-              />
-              {option.label}
-            </label>
-          ))}
-        </fieldset>
-      )}
-
-      {step === 1 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-3 font-semibold text-slate-900">
-            Você já caiu em algum golpe pela internet ou pelo celular?
-          </legend>
-          {SCAM_EXPERIENCE_OPTIONS.map((option) => (
-            <label key={option.value} className={optionClass}>
-              <input
-                type="radio"
-                name="scamExperience"
-                value={option.value}
-                checked={scamExperience === option.value}
-                onChange={() => setScamExperience(option.value)}
-                className="accent-primary-600"
-              />
-              {option.label}
-            </label>
-          ))}
-        </fieldset>
-      )}
-
-      {step === 2 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 font-semibold text-slate-900">O que você quer aprender?</legend>
-          <p className="mb-2 text-sm text-slate-500">Pode escolher mais de um.</p>
-          {LEARNING_GOAL_OPTIONS.map((option) => (
-            <label key={option.value} className={optionClass}>
-              <input
-                type="checkbox"
-                name="learningGoals"
-                value={option.value}
-                checked={learningGoals.includes(option.value)}
-                onChange={() => toggleGoal(option.value)}
-                className="accent-primary-600"
-              />
-              {option.label}
-            </label>
-          ))}
-        </fieldset>
-      )}
+      <fieldset key={step.field} className="flex flex-col gap-2">
+        <legend className="mb-3 font-semibold text-slate-900">{step.question}</legend>
+        {step.options.map((option) => (
+          <label key={option.value} className={optionClass}>
+            <input
+              type="radio"
+              name={step.field}
+              value={option.value}
+              checked={currentAnswer === option.value}
+              onChange={() => setAnswers((current) => ({ ...current, [step.field]: option.value }))}
+              className="accent-primary-600"
+            />
+            {option.label}
+          </label>
+        ))}
+      </fieldset>
 
       {error && (
         <p role="alert" className="text-sm text-danger-700">
@@ -151,9 +124,13 @@ export function Onboarding() {
         </p>
       )}
 
-      <div className={cn('flex gap-3', step > 0 ? 'justify-between' : 'justify-end')}>
-        {step > 0 && (
-          <Button variant="secondary" onClick={() => setStep(step - 1)} disabled={isSaving}>
+      <div className={cn('flex gap-3', stepIndex > 0 ? 'justify-between' : 'justify-end')}>
+        {stepIndex > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setStepIndex(stepIndex - 1)}
+            disabled={isSaving}
+          >
             Voltar
           </Button>
         )}
@@ -162,7 +139,7 @@ export function Onboarding() {
             Concluir
           </Button>
         ) : (
-          <Button onClick={() => setStep(step + 1)} disabled={!canAdvance}>
+          <Button onClick={() => setStepIndex(stepIndex + 1)} disabled={!canAdvance}>
             Continuar
           </Button>
         )}

@@ -11,7 +11,7 @@ export function isModuleComplete(module: ModuleWithId, progress: ProgressDocumen
   return allLessonsDone && quizPassed && simulationDone
 }
 
-function hasAnyProgress(progress: ProgressDocument): boolean {
+export function hasAnyProgress(progress: ProgressDocument): boolean {
   return (
     progress.lessonsCompleted.length > 0 || progress.simulationCompleted || progress.quizAttempts > 0
   )
@@ -48,26 +48,50 @@ export function getModuleStatus(
   return hasAnyProgress(progress) ? 'in_progress' : 'available'
 }
 
-// Percentual (0-100) considerando lições + quiz aprovado + simulação (se houver) como
-// etapas de peso igual. module.totalLessons existe exatamente para essa
+interface ModuleSteps {
+  completed: number
+  total: number
+}
+
+// Lições + quiz aprovado + simulação (se houver), todas com o mesmo peso.
+function countModuleSteps(
+  module: ModuleWithId,
+  progress: ProgressDocument | undefined
+): ModuleSteps {
+  const simulationSteps = module.hasSimulation ? 1 : 0
+  const total = Math.max(module.totalLessons, 0) + 1 + simulationSteps
+  if (!progress) return { completed: 0, total }
+
+  const completedLessons = Math.min(progress.lessonsCompleted.length, module.totalLessons)
+  const quizPassed = progress.quizBestScore !== null && progress.quizBestScore >= QUIZ_PASSING_SCORE
+  const completed =
+    completedLessons +
+    (quizPassed ? 1 : 0) +
+    (module.hasSimulation && progress.simulationCompleted ? 1 : 0)
+
+  return { completed, total }
+}
+
+// Percentual (0-100) do módulo. module.totalLessons existe exatamente para essa
 // conta: evita ter que passar a lista inteira de lições só para saber quantas
 // faltam.
 export function calculateModuleProgress(
   module: ModuleWithId,
   progress: ProgressDocument | undefined
 ): number {
-  if (!progress) return 0
+  const { completed, total } = countModuleSteps(module, progress)
+  return Math.round((completed / total) * 100)
+}
 
-  const simulationSteps = module.hasSimulation ? 1 : 0
-  const totalSteps = module.totalLessons + 1 + simulationSteps
-  if (totalSteps <= 0) return 0
+// Somo as etapas da trilha toda em vez de tirar média dos módulos, assim módulo com mais lição pesa mais.
+export function calculateTrailProgress(modules: ModuleWithId[], progressMap: ProgressMap): number {
+  const totals = modules.reduce(
+    (sum, module) => {
+      const steps = countModuleSteps(module, progressMap[module.id])
+      return { completed: sum.completed + steps.completed, total: sum.total + steps.total }
+    },
+    { completed: 0, total: 0 }
+  )
 
-  const completedLessons = Math.min(progress.lessonsCompleted.length, module.totalLessons)
-  const quizPassed = progress.quizBestScore !== null && progress.quizBestScore >= QUIZ_PASSING_SCORE
-  const completedSteps =
-    completedLessons +
-    (quizPassed ? 1 : 0) +
-    (module.hasSimulation && progress.simulationCompleted ? 1 : 0)
-
-  return Math.round((completedSteps / totalSteps) * 100)
+  return totals.total === 0 ? 0 : Math.round((totals.completed / totals.total) * 100)
 }

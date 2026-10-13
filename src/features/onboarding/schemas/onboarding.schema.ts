@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type {
-  LearningGoal,
+  OnboardingMotivation,
   OnboardingProfile,
   ScamExperience,
   SecurityKnowledge,
@@ -11,26 +11,24 @@ interface OnboardingOption<T extends string> {
   label: string
 }
 
+// Se mudar algum valor aqui, tenho que mudar junto em isValidOnboardingProfile no firestore.rules.
 export const SECURITY_KNOWLEDGE_OPTIONS: OnboardingOption<SecurityKnowledge>[] = [
-  { value: 'nenhum', label: 'Nunca parei pra pensar nisso' },
-  { value: 'basico', label: 'Sei o básico, tipo não passar senha pra ninguém' },
-  { value: 'intermediario', label: 'Me cuido bem e reconheço golpes comuns' },
-  { value: 'avancado', label: 'Entendo bastante e costumo ajudar outras pessoas' },
+  { value: 'iniciante', label: 'Iniciante' },
+  { value: 'intermediario', label: 'Intermediário' },
+  { value: 'avancado', label: 'Avançado' },
 ]
 
 export const SCAM_EXPERIENCE_OPTIONS: OnboardingOption<ScamExperience>[] = [
-  { value: 'sim', label: 'Sim, já caí' },
-  { value: 'quase', label: 'Quase caí, mas percebi a tempo' },
+  { value: 'sim', label: 'Sim' },
   { value: 'nao', label: 'Não' },
-  { value: 'nao_sei', label: 'Não sei dizer' },
+  { value: 'prefiro_nao_responder', label: 'Prefiro não responder' },
 ]
 
-export const LEARNING_GOAL_OPTIONS: OnboardingOption<LearningGoal>[] = [
-  { value: 'golpes_whatsapp', label: 'Golpes por WhatsApp e redes sociais' },
-  { value: 'phishing', label: 'Reconhecer emails e links falsos' },
-  { value: 'senhas', label: 'Criar e guardar senhas seguras' },
-  { value: 'compras_online', label: 'Comprar e pagar com segurança na internet' },
-  { value: 'proteger_familia', label: 'Proteger minha família' },
+export const MOTIVATION_OPTIONS: OnboardingOption<OnboardingMotivation>[] = [
+  { value: 'aprender_basico', label: 'Aprender o básico' },
+  { value: 'proteger_familia', label: 'Proteger a família' },
+  { value: 'interesse_profissional', label: 'Interesse profissional' },
+  { value: 'curiosidade', label: 'Curiosidade' },
 ]
 
 function enumOf<T extends string>(options: OnboardingOption<T>[]) {
@@ -42,10 +40,6 @@ export const onboardingProfileSchema = z
   .object({
     securityKnowledge: enumOf(SECURITY_KNOWLEDGE_OPTIONS),
     scamExperience: enumOf(SCAM_EXPERIENCE_OPTIONS),
-    learningGoals: z
-      .array(enumOf(LEARNING_GOAL_OPTIONS))
-      .min(1, 'Escolha pelo menos um tema.')
-      .max(LEARNING_GOAL_OPTIONS.length)
-      .refine((goals) => new Set(goals).size === goals.length, 'Tema repetido.'),
+    motivation: enumOf(MOTIVATION_OPTIONS),
   })
   .strict() satisfies z.ZodType<OnboardingProfile>
