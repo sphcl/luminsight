@@ -20,9 +20,10 @@ import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
 import type { SimulationDocument } from '@/types/simulation.types'
+import { parseRouteId } from '@/utils/security/route-params'
 
 export function Simulacao() {
-  const { simulationId } = useParams<{ simulationId: string }>()
+  const simulationId = parseRouteId(useParams<{ simulationId: string }>().simulationId)
   const { user } = useAuth()
   const state = useSimulationAccess(simulationId)
 

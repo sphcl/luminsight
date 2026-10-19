@@ -11,12 +11,15 @@ import { formatMinutes } from '@/features/modules/labels'
 import { markLessonCompleted } from '@/services/progress.service'
 import { mapFirestoreError } from '@/utils/security/errors'
 import type { LessonWithId, ModuleWithId } from '@/types/module.types'
+import { parseRouteId } from '@/utils/security/route-params'
 
 const secondaryLinkClass =
   'inline-flex h-11 items-center justify-center rounded-lg border border-surface-border bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-surface-muted'
 
 export function Licao() {
-  const { moduleId, lessonId } = useParams<{ moduleId: string; lessonId: string }>()
+  const params = useParams<{ moduleId: string; lessonId: string }>()
+  const moduleId = parseRouteId(params.moduleId)
+  const lessonId = parseRouteId(params.lessonId)
   const { user } = useAuth()
   const { state, addCompletedLesson } = useModuleAccess(moduleId)
 

@@ -157,18 +157,8 @@ export async function markModuleCompleted(uid: string, moduleId: string): Promis
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(ref)
 
-    if (!snapshot.exists()) {
-      transaction.set(ref, {
-        startedAt: serverTimestamp(),
-        completedAt: serverTimestamp(),
-        lessonsCompleted: [],
-        quizBestScore: null,
-        quizAttempts: 0,
-        simulationCompleted: false,
-        lastUpdatedAt: serverTimestamp(),
-      })
-      return
-    }
+    // Sem progresso não tem módulo concluído, e as rules recusam criar documento já com completedAt.
+    if (!snapshot.exists()) return
 
     transaction.update(ref, {
       completedAt: serverTimestamp(),
