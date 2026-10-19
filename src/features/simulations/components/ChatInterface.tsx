@@ -14,8 +14,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
   const { contact } = simulation
   const transcript = buildTranscript(
-    simulation.scenes,
-    session.sceneIndex,
+    session.visitedScenes,
     session.visibleMessages,
     session.decisions
   )

@@ -49,3 +49,29 @@ export function buildSimulation(overrides: Partial<SimulationDocument> = {}): Si
     ...overrides,
   }
 }
+
+// Acertar encerra na hora, errar leva pra próxima cena: caminho de 1 a 3 decisões.
+export function buildBranchingSimulation(): SimulationDocument {
+  const branch = (index: number, nextOnWrong: string | null) =>
+    buildDecision({
+      prompt: `Pergunta ${index}`,
+      options: [
+        { id: 'a', text: 'Opção A', isCorrect: true, feedback: 'Feedback A', nextSceneId: null },
+        {
+          id: 'b',
+          text: 'Opção B',
+          isCorrect: false,
+          feedback: 'Feedback B',
+          nextSceneId: nextOnWrong,
+        },
+      ],
+    })
+
+  return buildSimulation({
+    scenes: [
+      buildScene(1, { decision: branch(1, 'cena-03') }),
+      buildScene(2, { decision: branch(2, null) }),
+      buildScene(3),
+    ],
+  })
+}

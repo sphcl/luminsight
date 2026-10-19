@@ -61,7 +61,6 @@ Os módulos e lições ficam no Firestore (não no bundle) para poderem ser atua
 1. No [Console do Firebase](https://console.firebase.google.com/), abra o projeto do LumInsight.
 2. Vá em **Configurações do projeto → Contas de serviço**.
 3. Clique em **Gerar nova chave privada**. Isso baixa um `.json` com a credencial de admin.
-4. Salve esse arquivo na raiz do projeto como `firebase-service-account.json` (esse nome já está no `.gitignore`, **nunca** commite esse arquivo, ele dá acesso total de leitura/escrita ao banco).
 
 Se preferir salvar em outro caminho, aponte para ele com a variável de ambiente `FIREBASE_SERVICE_ACCOUNT_PATH`:
 

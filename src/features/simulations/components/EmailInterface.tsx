@@ -22,16 +22,21 @@ function getSubject(messages: SimulationMessage[]): string {
   return messages.find((message) => message.subject)?.subject ?? NO_SUBJECT
 }
 
+function getSentAt(messages: SimulationMessage[]): string | undefined {
+  return messages.find((message) => message.sentAt)?.sentAt
+}
+
 function attackerMessages(messages: SimulationMessage[]): SimulationMessage[] {
   return messages.filter((message) => message.sender === 'attacker')
 }
 
 // Cada cena é um email da caixa de entrada, e a decisão da cena é a classificação dele.
 export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
-  const { contact } = simulation
-  const { currentScene, sceneIndex, visibleMessages } = session
+  const { currentScene, sceneIndex, visibleMessages, visitedScenes } = session
+  const contact = currentScene?.contact ?? simulation.contact
+  const sentAt = getSentAt(visibleMessages)
 
-  const inbox = simulation.scenes.slice(0, sceneIndex + 1).flatMap((scene, index) => {
+  const inbox = visitedScenes.flatMap((scene, index) => {
     const messages = index === sceneIndex ? visibleMessages : scene.messages
     return attackerMessages(messages).length > 0 ? [{ scene, messages }] : []
   })
@@ -55,7 +60,7 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
                 key={scene.id}
                 scene={scene}
                 messages={messages}
-                contact={contact}
+                contact={scene.contact ?? simulation.contact}
                 isOpen={scene.id === currentScene?.id}
                 classification={session.decisions.find((item) => item.sceneId === scene.id)}
               />
@@ -93,6 +98,12 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
                     <dt className="text-slate-500">Para:</dt>
                     <dd className="text-slate-900">você</dd>
                   </div>
+                  {sentAt && (
+                    <div className="flex gap-1">
+                      <dt className="text-slate-500">Data:</dt>
+                      <dd className="text-slate-900">{sentAt}</dd>
+                    </div>
+                  )}
                 </dl>
               </div>
               <div className="flex flex-col gap-3 border-t border-surface-border pt-3 text-sm leading-relaxed text-slate-800">

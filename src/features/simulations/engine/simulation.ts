@@ -1,6 +1,7 @@
 import type {
   SimulationDecision,
   SimulationDecisionOption,
+  SimulationDocument,
   SimulationMessage,
   SimulationScene,
 } from '@/types/simulation.types'
@@ -57,6 +58,82 @@ export function summarizeSimulation(decisions: SimulationDecisionRecord[]): Simu
   }
 }
 
+export function isBranchingSimulation(scenes: SimulationScene[]): boolean {
+  return scenes.some((scene) =>
+    scene.decision.options.some((option) => option.nextSceneId !== undefined)
+  )
+}
+
+// Opção sem nextSceneId segue a ordem das cenas, e null encerra a simulação.
+export function resolveNextSceneId(
+  scenes: SimulationScene[],
+  scene: SimulationScene,
+  selectedOptionId: string
+): string | null {
+  const option = scene.decision.options.find((candidate) => candidate.id === selectedOptionId)
+  if (option?.nextSceneId !== undefined) return option.nextSceneId
+
+  const index = scenes.findIndex((candidate) => candidate.id === scene.id)
+  return scenes[index + 1]?.id ?? null
+}
+
+// Uso pra tela de introdução dizer quantas decisões a pessoa vai tomar quando o caminho varia.
+export function getDecisionCountRange(scenes: SimulationScene[]): { min: number; max: number } {
+  const first = scenes[0]
+  if (!first) return { min: 0, max: 0 }
+
+  const byId = new Map(scenes.map((scene) => [scene.id, scene]))
+
+  function walk(scene: SimulationScene, visited: Set<string>): { min: number; max: number } {
+    const nextIds = new Set(
+      scene.decision.options.map((option) => resolveNextSceneId(scenes, scene, option.id))
+    )
+    let min = Infinity
+    let max = 0
+
+    for (const nextId of nextIds) {
+      const next = nextId === null ? undefined : byId.get(nextId)
+      // Cena inexistente ou ciclo contam como fim; o validate.ts já barra os dois no conteúdo.
+      if (!next || visited.has(next.id)) {
+        min = Math.min(min, 1)
+        max = Math.max(max, 1)
+        continue
+      }
+      const rest = walk(next, new Set([...visited, next.id]))
+      min = Math.min(min, rest.min + 1)
+      max = Math.max(max, rest.max + 1)
+    }
+
+    return { min: Number.isFinite(min) ? min : 1, max: Math.max(max, 1) }
+  }
+
+  return walk(first, new Set([first.id]))
+}
+
+export const NAME_PLACEHOLDER = '{nome}'
+const FALLBACK_NAME = 'Usuário'
+
+export function getFirstName(displayName: string | null | undefined): string {
+  return displayName?.trim().split(/\s+/)[0] || FALLBACK_NAME
+}
+
+// Troca só texto puro: o React escapa na renderização, então o nome nunca vira markup.
+export function personalizeSimulation(
+  simulation: SimulationDocument,
+  firstName: string
+): SimulationDocument {
+  return {
+    ...simulation,
+    scenes: simulation.scenes.map((scene) => ({
+      ...scene,
+      messages: scene.messages.map((message) => ({
+        ...message,
+        content: message.content.split(NAME_PLACEHOLDER).join(firstName),
+      })),
+    })),
+  }
+}
+
 export type TranscriptEntry =
   | { kind: 'message'; key: string; message: SimulationMessage }
   | { kind: 'reply'; key: string; text: string }
@@ -69,16 +146,17 @@ function findOption(
 }
 
 // Junto as cenas já passadas com a atual pra conversa não sumir quando troca de cena.
+// visitedScenes é o caminho percorrido, e a última é a cena atual.
 export function buildTranscript(
-  scenes: SimulationScene[],
-  sceneIndex: number,
+  visitedScenes: SimulationScene[],
   visibleMessages: SimulationMessage[],
   decisions: SimulationDecisionRecord[]
 ): TranscriptEntry[] {
   const entries: TranscriptEntry[] = []
+  const lastIndex = visitedScenes.length - 1
 
-  scenes.slice(0, sceneIndex + 1).forEach((scene, index) => {
-    const messages = index === sceneIndex ? visibleMessages : scene.messages
+  visitedScenes.forEach((scene, index) => {
+    const messages = index === lastIndex ? visibleMessages : scene.messages
     messages.forEach((message, messageIndex) => {
       entries.push({ kind: 'message', key: `${scene.id}-${messageIndex}`, message })
     })

@@ -61,6 +61,36 @@ describe('ContentBlockRenderer', () => {
     expect(screen.getByText('Fonte: IBGE')).toBeInTheDocument()
   })
 
+  it('renderiza video como link externo que abre em nova aba sem opener', () => {
+    render(
+      <ContentBlockRenderer
+        block={{
+          type: 'video',
+          url: 'https://www.youtube.com/watch?v=abc',
+          title: 'Vídeo de exemplo',
+          caption: 'Ative as legendas.',
+        }}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: /Vídeo de exemplo/ })
+    expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=abc')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(screen.getByText('Ative as legendas.')).toBeInTheDocument()
+    expect(document.querySelector('iframe')).toBeNull()
+  })
+
+  it('não renderiza video com url que não é https', () => {
+    const { container } = render(
+      <ContentBlockRenderer
+        block={{ type: 'video', url: 'javascript:alert(1)', title: 'Malicioso' }}
+      />
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
   it('renderiza conteúdo com HTML como texto literal', () => {
     const { container } = render(
       <ContentBlockRenderer block={{ type: 'text', content: '<img src=x onerror="alert(1)">' }} />
@@ -72,7 +102,7 @@ describe('ContentBlockRenderer', () => {
 
   it('ignora type desconhecido sem quebrar', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const unknownBlock = { type: 'video', url: 'https://example.com' } as unknown as ContentBlock
+    const unknownBlock = { type: 'audio', url: 'https://example.com' } as unknown as ContentBlock
 
     const { container } = render(<ContentBlockRenderer block={unknownBlock} />)
 

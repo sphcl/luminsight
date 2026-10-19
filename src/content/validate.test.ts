@@ -111,12 +111,18 @@ describe('validateContent', () => {
   })
 
   it('acusa lacuna na ordem dos módulos', () => {
-    const modules = [buildEntry({ id: 'modulo-01', module: buildModule({ order: 1 }) }), buildEntry({ id: 'modulo-03', module: buildModule({ order: 3 }) })]
+    const modules = [
+      buildEntry({ id: 'modulo-01', module: buildModule({ order: 1 }) }),
+      buildEntry({ id: 'modulo-03', module: buildModule({ order: 3 }) }),
+    ]
     expect(validateContent(modules, [])).not.toEqual([])
   })
 
   it('acusa duplicata na ordem dos módulos', () => {
-    const modules = [buildEntry({ id: 'modulo-01', module: buildModule({ order: 1 }) }), buildEntry({ id: 'modulo-02', module: buildModule({ order: 1 }) })]
+    const modules = [
+      buildEntry({ id: 'modulo-01', module: buildModule({ order: 1 }) }),
+      buildEntry({ id: 'modulo-02', module: buildModule({ order: 1 }) }),
+    ]
     expect(validateContent(modules, [])).not.toEqual([])
   })
 
@@ -131,7 +137,9 @@ describe('validateContent', () => {
   })
 
   it('acusa correctOptionId que não existe entre as options', () => {
-    const entry = buildEntry({ quiz: [buildQuestion({ correctOptionId: 'inexistente' }), ...buildQuiz().slice(1)] })
+    const entry = buildEntry({
+      quiz: [buildQuestion({ correctOptionId: 'inexistente' }), ...buildQuiz().slice(1)],
+    })
     expect(validateContent([entry], [])).not.toEqual([])
   })
 
@@ -147,7 +155,12 @@ describe('validateContent', () => {
   })
 
   it('acusa multiple_choice sem quatro alternativas', () => {
-    const question = buildQuestion({ options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] })
+    const question = buildQuestion({
+      options: [
+        { id: 'a', text: 'A' },
+        { id: 'b', text: 'B' },
+      ],
+    })
     const entry = buildEntry({ quiz: [question, ...buildQuiz().slice(1)] })
     expect(validateContent([entry], [])).not.toEqual([])
   })
@@ -163,8 +176,14 @@ describe('validateContent', () => {
   })
 
   it('acusa ciclo na cadeia de requiredModuleId', () => {
-    const moduleA = buildEntry({ id: 'modulo-A', module: buildModule({ order: 1, requiredModuleId: 'modulo-B' }) })
-    const moduleB = buildEntry({ id: 'modulo-B', module: buildModule({ order: 2, requiredModuleId: 'modulo-A' }) })
+    const moduleA = buildEntry({
+      id: 'modulo-A',
+      module: buildModule({ order: 1, requiredModuleId: 'modulo-B' }),
+    })
+    const moduleB = buildEntry({
+      id: 'modulo-B',
+      module: buildModule({ order: 2, requiredModuleId: 'modulo-A' }),
+    })
     expect(validateContent([moduleA, moduleB], [])).not.toEqual([])
   })
 
@@ -201,6 +220,87 @@ describe('validateContent', () => {
     const phone = buildSimulation({ contact: { name: 'Contato', address: '(00) 90000-0000' } })
     const email = buildSimulation({ contact: { name: 'Contato', address: 'a@golpe.invalid' } })
     expect(validateContent([], [phone, email])).toEqual([])
+  })
+
+  it('acusa remetente de cena fora de domínio reservado', () => {
+    const base = buildSimulation()
+    const simulation = buildSimulation({
+      scenes: base.scenes.map((scene) => ({
+        ...scene,
+        contact: { name: 'Loja', address: 'pedidos@lojamercado.com.br' },
+      })),
+    })
+    expect(validateContent([], [simulation]).join()).toContain('lojamercado.com.br')
+  })
+
+  it('acusa nextSceneId apontando para cena inexistente', () => {
+    const scene = buildSimulation().scenes[0]!
+    const simulation = buildSimulation({
+      scenes: [
+        {
+          ...scene,
+          decision: {
+            ...scene.decision,
+            options: scene.decision.options.map((option) => ({
+              ...option,
+              nextSceneId: 'cena-99',
+            })),
+          },
+        },
+      ],
+    })
+    expect(validateContent([], [simulation]).join()).toContain('cena-99')
+  })
+
+  it('acusa ciclo entre cenas', () => {
+    const scene = buildSimulation().scenes[0]!
+    const loop = (id: string, order: number, nextSceneId: string) => ({
+      ...scene,
+      id,
+      order,
+      decision: {
+        ...scene.decision,
+        options: scene.decision.options.map((option) => ({ ...option, nextSceneId })),
+      },
+    })
+    const simulation = buildSimulation({
+      scenes: [loop('cena-01', 1, 'cena-02'), loop('cena-02', 2, 'cena-01')],
+    })
+    expect(validateContent([], [simulation]).join()).toContain('ciclo')
+  })
+
+  it('acusa cena que nenhum caminho alcança', () => {
+    const scene = buildSimulation().scenes[0]!
+    const simulation = buildSimulation({
+      scenes: [
+        {
+          ...scene,
+          decision: {
+            ...scene.decision,
+            options: scene.decision.options.map((option) => ({ ...option, nextSceneId: null })),
+          },
+        },
+        { ...scene, id: 'cena-02', order: 2 },
+      ],
+    })
+    expect(validateContent([], [simulation]).join()).toContain('não é alcançável')
+  })
+
+  it('acusa vídeo sem https', () => {
+    const entry = buildEntry({
+      lessons: [
+        buildLesson({
+          data: {
+            title: 'Lição',
+            order: 1,
+            estimatedMinutes: 5,
+            readingTimeSeconds: 60,
+            content: [{ type: 'video', url: 'http://www.youtube.com/watch?v=x', title: 'Vídeo' }],
+          },
+        }),
+      ],
+    })
+    expect(validateContent([entry], []).join()).toContain('https')
   })
 
   it('reprova módulo com [PENDENTE] e isActive: true', () => {

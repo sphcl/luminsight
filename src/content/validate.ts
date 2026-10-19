@@ -1,5 +1,6 @@
 import type { QuizQuestion } from '@/types/quiz.types'
-import type { SimulationDocument } from '@/types/simulation.types'
+import { resolveNextSceneId } from '@/features/simulations/engine/simulation'
+import type { SimulationDocument, SimulationScene } from '@/types/simulation.types'
 import type { ContentModuleEntry } from './index'
 
 const PENDING_MARKER = '[PENDENTE]'
@@ -27,7 +28,10 @@ export function hasPendingText(value: unknown): boolean {
   return false
 }
 
-export function validateContent(modules: ContentModuleEntry[], simulations: SimulationDocument[]): string[] {
+export function validateContent(
+  modules: ContentModuleEntry[],
+  simulations: SimulationDocument[]
+): string[] {
   const errors: string[] = []
   const moduleIds = new Set(modules.map((entry) => entry.id))
 
@@ -55,7 +59,9 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
     }
 
     if (entry.quiz.length !== 10) {
-      errors.push(`Módulo "${entry.id}": quiz precisa ter exatamente 10 questões, tem ${entry.quiz.length}.`)
+      errors.push(
+        `Módulo "${entry.id}": quiz precisa ter exatamente 10 questões, tem ${entry.quiz.length}.`
+      )
     }
 
     for (const question of entry.quiz) {
@@ -81,7 +87,9 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
       entry.lessons.some((lesson) => hasPendingText(lesson.data)) ||
       entry.quiz.some(hasPendingText)
     if (modulePending && entry.module.isActive) {
-      errors.push(`Módulo "${entry.id}": tem conteúdo com ${PENDING_MARKER} mas está com isActive: true.`)
+      errors.push(
+        `Módulo "${entry.id}": tem conteúdo com ${PENDING_MARKER} mas está com isActive: true.`
+      )
     }
   }
 
@@ -109,23 +117,93 @@ export function validateContent(modules: ContentModuleEntry[], simulations: Simu
     }
   }
 
+  for (const entry of modules) {
+    for (const lesson of entry.lessons) {
+      for (const block of lesson.data.content) {
+        if (block.type === 'video' && !block.url.startsWith('https://')) {
+          errors.push(`Módulo "${entry.id}", lição "${lesson.id}": vídeo precisa de url https.`)
+        }
+      }
+    }
+  }
+
   for (const simulation of simulations) {
-    const { address } = simulation.contact
-    if (address.includes('@') && !usesReservedDomain(address)) {
-      errors.push(
-        `Simulação "${simulation.id}": email "${address}" precisa usar domínio reservado (${RESERVED_EMAIL_TLDS.join(', ')}).`
-      )
+    const contacts = [
+      simulation.contact,
+      ...simulation.scenes.flatMap((scene) => scene.contact ?? []),
+    ]
+    for (const { address } of contacts) {
+      if (address.includes('@') && !usesReservedDomain(address)) {
+        errors.push(
+          `Simulação "${simulation.id}": email "${address}" precisa usar domínio reservado (${RESERVED_EMAIL_TLDS.join(', ')}).`
+        )
+      }
     }
 
     for (const scene of simulation.scenes) {
       const hasCorrectOption = scene.decision.options.some((option) => option.isCorrect)
       if (!hasCorrectOption) {
-        errors.push(`Simulação "${simulation.id}", cena "${scene.id}": decisão sem nenhuma opção correta.`)
+        errors.push(
+          `Simulação "${simulation.id}", cena "${scene.id}": decisão sem nenhuma opção correta.`
+        )
       }
     }
+
+    errors.push(...validateSceneFlow(simulation))
   }
 
   return errors
+}
+
+// Toda cena precisa ser alcançável a partir da primeira e nenhum caminho pode voltar pra trás.
+function validateSceneFlow(simulation: SimulationDocument): string[] {
+  const errors: string[] = []
+  const scenes = [...simulation.scenes].sort((a, b) => a.order - b.order)
+  const sceneIds = new Set(scenes.map((scene) => scene.id))
+
+  if (sceneIds.size !== scenes.length) {
+    return [`Simulação "${simulation.id}": cenas com id duplicado.`]
+  }
+
+  for (const scene of scenes) {
+    for (const option of scene.decision.options) {
+      if (typeof option.nextSceneId === 'string' && !sceneIds.has(option.nextSceneId)) {
+        errors.push(
+          `Simulação "${simulation.id}", cena "${scene.id}", opção "${option.id}": nextSceneId "${option.nextSceneId}" não existe.`
+        )
+      }
+    }
+  }
+  if (errors.length > 0) return errors
+
+  const reachable = new Set<string>()
+  const first = scenes[0]
+
+  function walk(scene: SimulationScene, path: Set<string>) {
+    reachable.add(scene.id)
+    for (const option of scene.decision.options) {
+      const nextId = resolveNextSceneId(scenes, scene, option.id)
+      const next = scenes.find((candidate) => candidate.id === nextId)
+      if (!next) continue
+      if (path.has(next.id)) {
+        errors.push(`Simulação "${simulation.id}": ciclo entre cenas passando por "${next.id}".`)
+        continue
+      }
+      walk(next, new Set([...path, next.id]))
+    }
+  }
+
+  if (first) walk(first, new Set([first.id]))
+
+  for (const scene of scenes) {
+    if (!reachable.has(scene.id)) {
+      errors.push(
+        `Simulação "${simulation.id}": cena "${scene.id}" não é alcançável a partir da primeira.`
+      )
+    }
+  }
+
+  return [...new Set(errors)]
 }
 
 export interface ModuleCompletionReport {
@@ -136,7 +214,9 @@ export interface ModuleCompletionReport {
   pendingQuizQuestions: number
 }
 
-export function getContentCompletionReport(modules: ContentModuleEntry[]): ModuleCompletionReport[] {
+export function getContentCompletionReport(
+  modules: ContentModuleEntry[]
+): ModuleCompletionReport[] {
   return modules.map((entry) => {
     const blocks = entry.lessons.flatMap((lesson) => lesson.data.content)
 

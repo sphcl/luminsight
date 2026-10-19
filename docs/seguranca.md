@@ -313,8 +313,29 @@ Foi feita uma varredura no código-fonte (`src/`, `scripts/` e `index.html`) e n
 | `console.log` fora de guarda de DEV | Nenhum em `src/`. Os `console.error` e `console.warn` existentes ficam dentro de `if (import.meta.env.DEV)`, então não aparecem em produção. O ESLint barra `console.log` (`no-console`). Os scripts de linha de comando em `scripts/` usam `console.log` porque essa é a interface deles. |
 | Dados sensíveis em `localStorage` ou `sessionStorage` | O código do projeto não usa nenhum dos dois. O SDK do Firebase Auth guarda o token de sessão no IndexedDB do navegador, que é o comportamento padrão dele. Esse token fica acessível a um script que conseguisse rodar na página, e é por isso que a CSP (seção 3.1) é a defesa principal contra roubo de sessão. |
 | Erro do Firebase vazando código interno | Nenhum. Todo erro passa por `mapAuthError` ou `mapFirestoreError` (`src/utils/security/errors.ts`), que devolvem mensagens genéricas. Os erros de credencial ("usuário não existe" e "senha errada") devolvem a mesma mensagem, para não permitir descobrir quais emails têm conta. |
-| Link externo sem `rel="noopener noreferrer"` | Nenhum link externo. O único `<a href>` literal é o link de pular para o conteúdo, interno à página. As fotos do Google são carregadas com `referrerPolicy="no-referrer"`. |
+| Link externo sem `rel="noopener noreferrer"` | O único link externo é o bloco de vídeo das lições (seção 5.1), que usa `target="_blank"` com `rel="noopener noreferrer"`. O outro `<a href>` literal é o link de pular para o conteúdo, interno à página. As fotos do Google são carregadas com `referrerPolicy="no-referrer"`. |
 | Entrada de usuário sem validação Zod | Login, cadastro, onboarding e edição de nome usam Zod. Quiz e simulações usam apenas opções predefinidas, e o quiz é recorrigido pelo gabarito em vez de confiar no que veio da tela. O parâmetro `redirect` da URL passa por `getSafeRedirectPath` (proteção contra open redirect). **Corrigido nesta fase:** os parâmetros de rota (`moduleId`, `lessonId`, `simulationId`) iam direto para os caminhos do Firestore. Agora passam por `parseRouteId` (`src/utils/security/route-params.ts`), que só aceita o formato dos ids de conteúdo. |
+
+### 5.1 Vídeos nas lições
+
+Os módulos 1 e 3 indicam vídeos do YouTube. A forma mais comum de exibir esses vídeos seria um
+`<iframe>` incorporado, mas isso exigiria liberar `https://www.youtube.com` em `frame-src` na CSP e
+carregar dentro da página um conteúdo de terceiro, com scripts próprios e rastreamento, que o
+projeto não controla.
+
+Por isso o vídeo entra como um bloco do tipo `video`, renderizado como um cartão de link
+(`src/features/modules/components/ContentBlockRenderer.tsx`):
+
+- abre em nova aba com `rel="noopener noreferrer"`, então a página do YouTube não recebe referência
+  para a janela do LumInsight (`window.opener`) nem o endereço da lição de onde o usuário veio;
+- a URL precisa ser `https://` em três pontos independentes: no validador de conteúdo antes do
+  seed (`src/content/validate.ts`), no Zod que valida o que é lido do Firestore
+  (`src/utils/security/firestore-validators.ts`) e no próprio componente antes de virar `href`.
+  Um `javascript:` gravado por engano no banco nunca chega a ser clicável;
+- a CSP continua sem nenhuma origem em `frame-src` além do domínio de autenticação.
+
+O custo é de usabilidade: o usuário sai da plataforma para assistir. Para um projeto de Segurança da
+Informação essa troca é intencional, e a lição avisa que o link abre fora do LumInsight.
 
 ## 6. Dependências
 

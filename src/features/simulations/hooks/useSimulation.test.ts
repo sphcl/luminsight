@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useSimulation } from './useSimulation'
-import { buildSimulation } from '@/test/fixtures/simulation'
+import { buildBranchingSimulation, buildSimulation } from '@/test/fixtures/simulation'
 import { clearMatchMedia, mockReducedMotion } from '@/test/matchMedia'
 
 const simulation = buildSimulation()
@@ -106,5 +106,43 @@ describe('useSimulation', () => {
       isPerfect: false,
     })
     expect(onFinish).toHaveBeenCalledOnce()
+  })
+
+  it('em simulação ramificada encerra quando a opção aponta pro fim', () => {
+    mockReducedMotion(true)
+    const onFinish = vi.fn()
+    const { result } = renderHook(() => useSimulation(buildBranchingSimulation(), { onFinish }))
+
+    expect(result.current.totalScenes).toBeNull()
+    act(() => result.current.chooseOption('a'))
+    expect(result.current.isLastScene).toBe(true)
+    act(() => result.current.goToNextScene())
+
+    expect(onFinish).toHaveBeenCalledWith(
+      expect.objectContaining({ totalDecisions: 1, correctDecisions: 1 })
+    )
+  })
+
+  it('em simulação ramificada segue o nextSceneId e pula a cena fora do caminho', () => {
+    mockReducedMotion(true)
+    const onFinish = vi.fn()
+    const { result } = renderHook(() => useSimulation(buildBranchingSimulation(), { onFinish }))
+
+    act(() => result.current.chooseOption('b'))
+    expect(result.current.isLastScene).toBe(false)
+    act(() => result.current.goToNextScene())
+
+    expect(result.current.currentScene?.id).toBe('cena-03')
+    expect(result.current.sceneIndex).toBe(1)
+    expect(result.current.visitedScenes.map((scene) => scene.id)).toEqual(['cena-01', 'cena-03'])
+
+    act(() => result.current.chooseOption('a'))
+    act(() => result.current.goToNextScene())
+
+    const summary = onFinish.mock.calls[0]?.[0]
+    expect(summary.decisions.map((decision: { sceneId: string }) => decision.sceneId)).toEqual([
+      'cena-01',
+      'cena-03',
+    ])
   })
 })
