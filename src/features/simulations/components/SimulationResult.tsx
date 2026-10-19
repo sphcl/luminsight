@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Badge, Button, Card } from '@/components/ui'
 import type { SimulationSummary } from '@/features/simulations/engine/simulation'
+import { ContentBlockRenderer } from '@/features/modules/components/ContentBlockRenderer'
+import type { ContentBlock } from '@/types/module.types'
 import type { SimulationScene } from '@/types/simulation.types'
 import { cn } from '@/utils/helpers/classnames'
 import { SimulationIndicator } from './SimulationIndicator'
@@ -10,6 +12,7 @@ export type SaveStatus = 'saving' | 'saved' | 'error'
 interface SimulationResultProps {
   summary: SimulationSummary
   scenes: SimulationScene[]
+  conclusion?: ContentBlock[]
   saveStatus: SaveStatus
   backTo: string
   onRetry: () => void
@@ -18,11 +21,17 @@ interface SimulationResultProps {
 export function SimulationResult({
   summary,
   scenes,
+  conclusion,
   saveStatus,
   backTo,
   onRetry,
 }: SimulationResultProps) {
   const decisionsByScene = new Map(summary.decisions.map((record) => [record.sceneId, record]))
+  // Em simulação ramificada a pessoa não passa por todas as cenas, então só reviso as que ela viu.
+  const reviewedScenes = summary.decisions.flatMap((record) => {
+    const scene = scenes.find((candidate) => candidate.id === record.sceneId)
+    return scene ? [scene] : []
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,12 +69,23 @@ export function SimulationResult({
         </div>
       </Card>
 
+      {conclusion && conclusion.length > 0 && (
+        <Card className="flex flex-col gap-3" aria-labelledby="conclusion-title">
+          <h2 id="conclusion-title" className="text-lg font-semibold text-slate-900">
+            O que esse golpe tinha
+          </h2>
+          {conclusion.map((block, index) => (
+            <ContentBlockRenderer key={index} block={block} />
+          ))}
+        </Card>
+      )}
+
       <section aria-labelledby="decisions-review-title" className="flex flex-col gap-3">
         <h2 id="decisions-review-title" className="text-lg font-semibold text-slate-900">
           Revisão das decisões
         </h2>
         <ol className="flex flex-col gap-3">
-          {scenes.map((scene, index) => {
+          {reviewedScenes.map((scene, index) => {
             const record = decisionsByScene.get(scene.id)
             const selected = scene.decision.options.find(
               (option) => option.id === record?.selectedOptionId

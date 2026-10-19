@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Badge, Button, Card, Skeleton } from '@/components/ui'
 import { ROUTES } from '@/constants/routes'
@@ -12,7 +12,12 @@ import {
   SimulationResult,
   type SaveStatus,
 } from '@/features/simulations/components/SimulationResult'
-import type { SimulationSummary } from '@/features/simulations/engine/simulation'
+import {
+  getDecisionCountRange,
+  getFirstName,
+  personalizeSimulation,
+  type SimulationSummary,
+} from '@/features/simulations/engine/simulation'
 import { useSimulationAccess } from '@/features/simulations/hooks/useSimulations'
 import { FORMAT_LABELS } from '@/features/simulations/labels'
 import { markModuleCompleted, markSimulationCompleted } from '@/services/progress.service'
@@ -20,10 +25,11 @@ import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
 import type { SimulationDocument } from '@/types/simulation.types'
+import { parseRouteId } from '@/utils/security/route-params'
 
 export function Simulacao() {
-  const { simulationId } = useParams<{ simulationId: string }>()
-  const { user } = useAuth()
+  const simulationId = parseRouteId(useParams<{ simulationId: string }>().simulationId)
+  const { user, userDocument } = useAuth()
   const state = useSimulationAccess(simulationId)
 
   switch (state.status) {
@@ -61,6 +67,7 @@ export function Simulacao() {
           key={state.simulation.id}
           uid={user.uid}
           simulation={state.simulation}
+          recipientName={getFirstName(userDocument?.displayName ?? user.displayName)}
           module={state.module}
           progress={state.progress}
         />
@@ -71,13 +78,25 @@ export function Simulacao() {
 interface SimulationSessionProps {
   uid: string
   simulation: SimulationDocument
+  recipientName: string
   module: ModuleWithId
   progress: ProgressDocument | undefined
 }
 
 type Phase = 'intro' | 'running' | 'result'
 
-function SimulationSession({ uid, simulation, module, progress }: SimulationSessionProps) {
+function SimulationSession({
+  uid,
+  simulation: rawSimulation,
+  recipientName,
+  module,
+  progress,
+}: SimulationSessionProps) {
+  // Memo pra engine não receber cenas novas a cada render e reiniciar o timer das mensagens.
+  const simulation = useMemo(
+    () => personalizeSimulation(rawSimulation, recipientName),
+    [rawSimulation, recipientName]
+  )
   const [phase, setPhase] = useState<Phase>('intro')
   const [attempt, setAttempt] = useState(0)
   const [summary, setSummary] = useState<SimulationSummary | null>(null)
@@ -139,6 +158,7 @@ function SimulationSession({ uid, simulation, module, progress }: SimulationSess
         <SimulationResult
           summary={summary}
           scenes={simulation.scenes}
+          conclusion={simulation.conclusion}
           saveStatus={saveStatus}
           backTo={ROUTES.SIMULACOES}
           onRetry={handleRetry}
@@ -165,7 +185,7 @@ function SimulationIntro({ simulation, module, onStart }: SimulationIntroProps) 
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{simulation.title}</h1>
         <p className="mt-1 text-sm text-slate-500">Módulo: {module.title}</p>
-        <p className="mt-2 text-slate-700">{simulation.description}</p>
+        <p className="mt-2 whitespace-pre-line text-slate-700">{simulation.description}</p>
       </div>
       <div className="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-slate-800">
         <p className="font-semibold">Isto é uma simulação.</p>
@@ -176,9 +196,7 @@ function SimulationIntro({ simulation, module, onStart }: SimulationIntroProps) 
         </p>
       </div>
       <ul className="flex flex-col gap-1 text-sm text-slate-700">
-        <li>
-          {simulation.scenes.length} {simulation.scenes.length === 1 ? 'decisão' : 'decisões'}
-        </li>
+        <li>{formatDecisionCount(getDecisionCountRange(simulation.scenes))}</li>
         <li>Depois de escolher uma opção, não dá para alterá-la.</li>
         <li>Cada decisão mostra o sinal que entregava o golpe.</li>
       </ul>
@@ -188,6 +206,11 @@ function SimulationIntro({ simulation, module, onStart }: SimulationIntroProps) 
       <SimulationIndicator />
     </Card>
   )
+}
+
+function formatDecisionCount({ min, max }: { min: number; max: number }): string {
+  if (min === max) return `${max} ${max === 1 ? 'decisão' : 'decisões'}`
+  return `De ${min} a ${max} decisões, dependendo das suas escolhas`
 }
 
 function SimulationSkeleton() {

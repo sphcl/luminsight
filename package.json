@@ -14,8 +14,9 @@
     "type-check": "tsc -b",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:rules": "npx --yes firebase-tools@15.33.0 emulators:exec --only firestore --project demo-luminsight 'vitest run --config vitest.rules.config.ts'",
     "test:coverage": "vitest run --coverage",
-    "audit:check": "npm audit --audit-level=high",
+    "audit:check": "tsx --tsconfig tsconfig.scripts.json scripts/audit-check.ts",
     "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed-modules.ts"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -56,5 +58,8 @@
     "typescript-eslint": "^8.62.0",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

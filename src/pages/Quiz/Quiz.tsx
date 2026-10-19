@@ -17,9 +17,10 @@ import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
 import type { QuizQuestion } from '@/types/quiz.types'
+import { parseRouteId } from '@/utils/security/route-params'
 
 export function Quiz() {
-  const { moduleId } = useParams<{ moduleId: string }>()
+  const moduleId = parseRouteId(useParams<{ moduleId: string }>().moduleId)
   const { user } = useAuth()
   const { state } = useModuleAccess(moduleId)
 

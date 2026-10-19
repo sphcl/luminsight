@@ -17,7 +17,8 @@ export function SimulationEngine({ simulation, onFinish }: SimulationEngineProps
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-slate-500">
-        Cena {session.sceneIndex + 1} de {session.totalScenes}
+        Cena {session.sceneIndex + 1}
+        {session.totalScenes !== null && ` de ${session.totalScenes}`}
       </p>
       {simulation.format === 'chat' && <ChatInterface simulation={simulation} session={session} />}
       {simulation.format === 'email' && (

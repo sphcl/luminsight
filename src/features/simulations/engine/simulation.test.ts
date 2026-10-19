@@ -3,11 +3,21 @@ import {
   buildTranscript,
   calculateSimulationScore,
   evaluateDecision,
+  getDecisionCountRange,
+  getFirstName,
+  isBranchingSimulation,
   isPerfectRun,
+  personalizeSimulation,
+  resolveNextSceneId,
   summarizeSimulation,
   type SimulationDecisionRecord,
 } from './simulation'
-import { buildDecision, buildSimulation } from '@/test/fixtures/simulation'
+import {
+  buildBranchingSimulation,
+  buildDecision,
+  buildScene,
+  buildSimulation,
+} from '@/test/fixtures/simulation'
 
 function record(sceneId: string, isCorrect: boolean): SimulationDecisionRecord {
   return { sceneId, selectedOptionId: isCorrect ? 'a' : 'b', isCorrect }
@@ -89,11 +99,82 @@ describe('buildTranscript', () => {
   it('mantém as cenas anteriores com a resposta escolhida e só as mensagens visíveis da atual', () => {
     const { scenes } = buildSimulation()
     const current = scenes[1]!
-    const entries = buildTranscript(scenes, 1, current.messages.slice(0, 1), [
+    const entries = buildTranscript(scenes.slice(0, 2), current.messages.slice(0, 1), [
       record('cena-01', true),
     ])
 
     expect(entries.map((entry) => entry.kind)).toEqual(['message', 'message', 'reply', 'message'])
     expect(entries[2]).toMatchObject({ kind: 'reply', text: 'Opção A' })
+  })
+
+  it('mostra só as cenas do caminho percorrido, pulando as que ficaram de fora', () => {
+    const { scenes } = buildBranchingSimulation()
+    const visited = [scenes[0]!, scenes[2]!]
+    const entries = buildTranscript(visited, visited[1]!.messages, [record('cena-01', false)])
+
+    const keys = entries.map((entry) => entry.key)
+    expect(keys.some((key) => key.startsWith('cena-02'))).toBe(false)
+    expect(keys).toContain('cena-03-0')
+  })
+})
+
+describe('resolveNextSceneId', () => {
+  it('segue a ordem das cenas quando a opção não define o próximo passo', () => {
+    const { scenes } = buildSimulation({ scenes: [buildScene(1), buildScene(2)] })
+    expect(resolveNextSceneId(scenes, scenes[0]!, 'a')).toBe('cena-02')
+    expect(resolveNextSceneId(scenes, scenes[1]!, 'a')).toBeNull()
+  })
+
+  it('respeita nextSceneId e trata null como fim', () => {
+    const { scenes } = buildBranchingSimulation()
+    expect(resolveNextSceneId(scenes, scenes[0]!, 'b')).toBe('cena-03')
+    expect(resolveNextSceneId(scenes, scenes[0]!, 'a')).toBeNull()
+  })
+})
+
+describe('isBranchingSimulation', () => {
+  it('diferencia simulação linear de ramificada', () => {
+    expect(isBranchingSimulation(buildSimulation().scenes)).toBe(false)
+    expect(isBranchingSimulation(buildBranchingSimulation().scenes)).toBe(true)
+  })
+})
+
+describe('getDecisionCountRange', () => {
+  it('conta todas as cenas quando é linear', () => {
+    expect(getDecisionCountRange(buildSimulation().scenes)).toEqual({ min: 2, max: 2 })
+  })
+
+  it('devolve o menor e o maior caminho quando ramifica', () => {
+    expect(getDecisionCountRange(buildBranchingSimulation().scenes)).toEqual({ min: 1, max: 2 })
+  })
+})
+
+describe('getFirstName', () => {
+  it('usa só o primeiro nome', () => {
+    expect(getFirstName('  Ana Maria Souza ')).toBe('Ana')
+  })
+
+  it('cai no fallback sem nome', () => {
+    expect(getFirstName(null)).toBe('Usuário')
+    expect(getFirstName('   ')).toBe('Usuário')
+  })
+})
+
+describe('personalizeSimulation', () => {
+  it('troca o marcador pelo nome em todas as mensagens sem mexer no resto', () => {
+    const simulation = buildSimulation({
+      scenes: [
+        buildScene(1, {
+          messages: [{ sender: 'attacker', content: 'Olá, {nome}. Tudo bem, {nome}?' }],
+        }),
+      ],
+    })
+
+    const personalized = personalizeSimulation(simulation, '<b>Ana</b>')
+
+    expect(personalized.scenes[0]?.messages[0]?.content).toBe(
+      'Olá, <b>Ana</b>. Tudo bem, <b>Ana</b>?'
+    )
+    expect(simulation.scenes[0]?.messages[0]?.content).toBe('Olá, {nome}. Tudo bem, {nome}?')
   })
 })

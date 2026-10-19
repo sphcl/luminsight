@@ -28,7 +28,7 @@ export function SceneDecision({ session, variant }: SceneDecisionProps) {
       key={currentScene.id}
       feedback={feedback}
       correctOptionText={correctOption?.text ?? null}
-      isLastScene={session.sceneIndex === session.totalScenes - 1}
+      isLastScene={session.isLastScene}
       onContinue={session.goToNextScene}
     />
   )

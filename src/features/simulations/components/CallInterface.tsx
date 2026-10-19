@@ -30,8 +30,7 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
   const { contact } = simulation
   const duration = useCallDuration()
   const transcript = buildTranscript(
-    simulation.scenes,
-    session.sceneIndex,
+    session.visitedScenes,
     session.visibleMessages,
     session.decisions
   )

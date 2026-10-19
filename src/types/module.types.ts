@@ -29,6 +29,7 @@ export type ContentBlock =
   | { type: 'list'; items: string[]; ordered: boolean }
   | { type: 'example'; title: string; content: string }
   | { type: 'fact'; content: string; source: string }
+  | { type: 'video'; url: string; title: string; caption?: string }
 
 // Documento da subcoleção "modules/{moduleId}/lessons": o path já amarra a
 // lição ao módulo, então não guardamos moduleId de novo como campo.

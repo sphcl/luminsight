@@ -6,9 +6,10 @@ import { ContentUnavailable } from '@/features/modules/components/ContentUnavail
 import { useModuleAccess, type ModuleAccessData } from '@/features/modules/hooks/useModuleAccess'
 import { formatMinutes, getDifficultyLabel, getStatusBadge } from '@/features/modules/labels'
 import { cn } from '@/utils/helpers/classnames'
+import { parseRouteId } from '@/utils/security/route-params'
 
 export function Modulo() {
-  const { moduleId } = useParams<{ moduleId: string }>()
+  const moduleId = parseRouteId(useParams<{ moduleId: string }>().moduleId)
   const { state } = useModuleAccess(moduleId)
 
   switch (state.status) {

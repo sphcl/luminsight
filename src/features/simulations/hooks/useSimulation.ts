@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import {
   evaluateDecision,
+  isBranchingSimulation,
+  resolveNextSceneId,
   summarizeSimulation,
   type DecisionEvaluation,
   type SimulationDecisionRecord,
@@ -20,8 +22,12 @@ interface UseSimulationOptions {
 
 export interface UseSimulationReturn {
   currentScene: SimulationScene | undefined
+  // Posição da cena atual no caminho percorrido, não no array de cenas.
   sceneIndex: number
-  totalScenes: number
+  // null quando a simulação ramifica e o total depende das escolhas.
+  totalScenes: number | null
+  visitedScenes: SimulationScene[]
+  isLastScene: boolean
   visibleMessages: SimulationMessage[]
   areMessagesComplete: boolean
   decisions: SimulationDecisionRecord[]
@@ -40,15 +46,19 @@ export function useSimulation(
 ): UseSimulationReturn {
   const prefersReducedMotion = usePrefersReducedMotion()
   const scenes = simulation.scenes
-  const [sceneIndex, setSceneIndex] = useState(0)
+  const [path, setPath] = useState<string[]>(() => (scenes[0] ? [scenes[0].id] : []))
   const [revealedCount, setRevealedCount] = useState(0)
   const [decisions, setDecisions] = useState<SimulationDecisionRecord[]>([])
   const [result, setResult] = useState<SimulationSummary | null>(null)
   // Ref e não state pelo mesmo motivo do quiz: dois cliques no mesmo render finalizariam duas vezes.
   const hasFinishedRef = useRef(false)
 
-  // eslint-disable-next-line security/detect-object-injection -- índice numérico controlado pelo hook
-  const currentScene = scenes[sceneIndex]
+  const visitedScenes = path.flatMap((sceneId) => {
+    const scene = scenes.find((candidate) => candidate.id === sceneId)
+    return scene ? [scene] : []
+  })
+  const currentScene: SimulationScene | undefined = visitedScenes[visitedScenes.length - 1]
+  const sceneIndex = Math.max(0, visitedScenes.length - 1)
   const totalMessages = currentScene?.messages.length ?? 0
   const visibleCount = prefersReducedMotion ? totalMessages : Math.min(revealedCount, totalMessages)
   const areMessagesComplete = visibleCount >= totalMessages
@@ -66,6 +76,11 @@ export function useSimulation(
       ? evaluateDecision(currentScene.decision, currentRecord.selectedOptionId)
       : null
   const isFinished = result !== null
+  const nextSceneId =
+    currentScene && currentRecord
+      ? resolveNextSceneId(scenes, currentScene, currentRecord.selectedOptionId)
+      : null
+  const isLastScene = hasDecided && nextSceneId === null
 
   useEffect(() => {
     if (prefersReducedMotion || !currentScene || revealedCount >= currentScene.messages.length)
@@ -99,8 +114,8 @@ export function useSimulation(
   function goToNextScene() {
     if (!hasDecided || isFinished) return
 
-    if (sceneIndex < scenes.length - 1) {
-      setSceneIndex(sceneIndex + 1)
+    if (nextSceneId !== null) {
+      setPath((previous) => [...previous, nextSceneId])
       setRevealedCount(0)
       return
     }
@@ -116,7 +131,9 @@ export function useSimulation(
   return {
     currentScene,
     sceneIndex,
-    totalScenes: scenes.length,
+    totalScenes: isBranchingSimulation(scenes) ? null : scenes.length,
+    visitedScenes,
+    isLastScene,
     visibleMessages: currentScene?.messages.slice(0, visibleCount) ?? [],
     areMessagesComplete,
     decisions,

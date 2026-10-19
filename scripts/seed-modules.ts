@@ -1,13 +1,20 @@
 // Popula módulos, lições e simulações no Firestore via Admin SDK, ver README para credencial.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { cert, initializeApp, type ServiceAccount } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { CONTENT_MODULES, CONTENT_SIMULATIONS, type ContentModuleEntry } from '../src/content'
 import { hasPendingText, validateContent } from '../src/content/validate'
 import type { SimulationDocument } from '../src/types/simulation.types'
 
+// Fora do repositório é o lugar recomendado: assim a chave nunca entra num git add por engano.
+const HOME_SERVICE_ACCOUNT_PATH = join(homedir(), '.config', 'luminsight', 'service-account.json')
+const REPO_SERVICE_ACCOUNT_PATH = './firebase-service-account.json'
+
 const SERVICE_ACCOUNT_PATH =
-  process.env.FIREBASE_SERVICE_ACCOUNT_PATH ?? './firebase-service-account.json'
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH ??
+  (existsSync(HOME_SERVICE_ACCOUNT_PATH) ? HOME_SERVICE_ACCOUNT_PATH : REPO_SERVICE_ACCOUNT_PATH)
 
 const isDryRun = process.argv.includes('--dry-run')
 

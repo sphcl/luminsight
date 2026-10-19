@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SimulationEngine } from './SimulationEngine'
-import { buildSimulation } from '@/test/fixtures/simulation'
+import { buildBranchingSimulation, buildScene, buildSimulation } from '@/test/fixtures/simulation'
 import { clearMatchMedia, mockReducedMotion } from '@/test/matchMedia'
 import type { SimulationFormat } from '@/types/simulation.types'
 
@@ -40,6 +40,37 @@ describe('SimulationEngine', () => {
     const log = screen.getByRole('log')
     expect(within(log).getByText('Mensagem 1')).toBeInTheDocument()
     expect(within(log).getByText('Contato Fictício')).toBeInTheDocument()
+  })
+
+  it('email usa o remetente e a data da própria cena quando existem', () => {
+    const simulation = buildSimulation({
+      format: 'email',
+      scenes: [
+        buildScene(1, {
+          contact: { name: 'Banco Aurora', address: 'seguranca@bancoaur0ra.example' },
+          messages: [
+            {
+              sender: 'attacker',
+              content: 'Corpo',
+              subject: 'Aviso',
+              sentAt: '27/08/2026 - 08:42',
+            },
+          ],
+        }),
+      ],
+    })
+    render(<SimulationEngine simulation={simulation} onFinish={vi.fn()} />)
+
+    expect(screen.getAllByText(/seguranca@bancoaur0ra\.example/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/contato@golpe\.example/)).not.toBeInTheDocument()
+    expect(screen.getByText('27/08/2026 - 08:42')).toBeInTheDocument()
+  })
+
+  it('em simulação ramificada mostra a cena sem total', () => {
+    render(<SimulationEngine simulation={buildBranchingSimulation()} onFinish={vi.fn()} />)
+
+    expect(screen.getByText('Cena 1')).toBeInTheDocument()
+    expect(screen.queryByText(/de 3/)).not.toBeInTheDocument()
   })
 
   it('email mostra remetente com endereço completo e assunto', () => {

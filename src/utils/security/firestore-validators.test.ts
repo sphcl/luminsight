@@ -81,9 +81,17 @@ describe('parseLesson', () => {
     expect(
       parseLesson({
         ...validLesson,
-        content: [{ type: 'video', url: 'https://example.com' }],
+        content: [{ type: 'audio', url: 'https://example.com' }],
       })
     ).toBeNull()
+  })
+
+  it('rejeita video com url que não é https', () => {
+    for (const url of ['javascript:alert(1)', 'http://example.com/video', 'não é url']) {
+      expect(
+        parseLesson({ ...validLesson, content: [{ type: 'video', url, title: 'Vídeo' }] })
+      ).toBeNull()
+    }
   })
 
   it('rejeita highlight sem variant', () => {
@@ -103,6 +111,7 @@ describe('parseLesson', () => {
       { type: 'list', items: ['a', 'b'], ordered: false },
       { type: 'example', title: 'Exemplo', content: 'conteúdo' },
       { type: 'fact', content: 'fato', source: 'fonte' },
+      { type: 'video', url: 'https://www.youtube.com/watch?v=abc', title: 'Vídeo' },
     ]
     expect(parseLesson({ ...validLesson, content })).not.toBeNull()
   })
@@ -150,6 +159,29 @@ describe('parseSimulation', () => {
   it('rejeita simulação sem contact', () => {
     const { contact, ...withoutContact } = validSimulation
     expect(parseSimulation(withoutContact)).toBeNull()
+  })
+
+  it('aceita ramificação, remetente por cena, data do email e conclusão', () => {
+    const scene = buildScene(1, {
+      contact: { name: 'Banco', address: 'seguranca@banco.example' },
+      messages: [{ sender: 'attacker', content: 'Oi', subject: 'Aviso', sentAt: '27/08/2026' }],
+    })
+    const branching = {
+      ...scene,
+      decision: {
+        ...scene.decision,
+        options: scene.decision.options.map((option) => ({ ...option, nextSceneId: null })),
+      },
+    }
+    const parsed = parseSimulation({
+      ...validSimulation,
+      scenes: [branching],
+      conclusion: [{ type: 'text', content: 'Fim.' }],
+    })
+
+    expect(parsed?.scenes[0]?.contact?.address).toBe('seguranca@banco.example')
+    expect(parsed?.scenes[0]?.decision.options[0]?.nextSceneId).toBeNull()
+    expect(parsed?.conclusion).toHaveLength(1)
   })
 
   it('rejeita delay negativo', () => {

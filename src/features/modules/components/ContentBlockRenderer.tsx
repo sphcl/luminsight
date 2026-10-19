@@ -26,6 +26,15 @@ const highlightStyles: Record<
   },
 }
 
+// Confiro de novo aqui porque o bloco pode chegar de fixture ou teste sem passar pelo parseLesson.
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 // Renderizo tudo como texto via JSX porque o conteúdo vem do Firestore e não confio nele como HTML.
 export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
   switch (block.type) {
@@ -82,6 +91,26 @@ export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
           <figcaption className="mt-2 text-sm text-slate-500">Fonte: {block.source}</figcaption>
         </figure>
       )
+
+    case 'video': {
+      if (!isHttpsUrl(block.url)) return null
+
+      return (
+        <a
+          href={block.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col gap-1 rounded-card border border-surface-border bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        >
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Vídeo externo
+          </span>
+          <span className="font-semibold text-primary-700">{block.title}</span>
+          {block.caption && <span className="text-sm text-slate-600">{block.caption}</span>}
+          <span className="text-xs text-slate-500">Abre em uma nova aba, fora do LumInsight.</span>
+        </a>
+      )
+    }
 
     default: {
       // Atribuo a never pra o type-check quebrar se entrar um type novo sem case aqui.

@@ -45,6 +45,13 @@ const contentBlockSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('example'), title: z.string(), content: z.string() }),
   z.object({ type: z.literal('fact'), content: z.string(), source: z.string() }),
+  // Só https: a url vira href, então javascript: ou http: nem passam daqui.
+  z.object({
+    type: z.literal('video'),
+    url: z.url({ protocol: /^https$/ }),
+    title: z.string(),
+    caption: z.string().optional(),
+  }),
 ])
 
 const lessonSchema = z.object({
@@ -70,7 +77,10 @@ const simulationMessageSchema = z.object({
   content: z.string(),
   delay: z.number().nonnegative().optional(),
   subject: z.string().optional(),
+  sentAt: z.string().optional(),
 })
+
+const simulationContactSchema = z.object({ name: z.string(), address: z.string() })
 
 const simulationSceneSchema = z.object({
   id: z.string(),
@@ -85,10 +95,12 @@ const simulationSceneSchema = z.object({
           text: z.string(),
           isCorrect: z.boolean(),
           feedback: z.string(),
+          nextSceneId: z.string().nullable().optional(),
         })
       )
       .min(1),
   }),
+  contact: simulationContactSchema.optional(),
 })
 
 // O id vem do path do documento, então não faz parte do schema.
@@ -97,9 +109,10 @@ const simulationSchema = z.object({
   title: z.string(),
   description: z.string(),
   format: z.enum(['chat', 'email', 'call']),
-  contact: z.object({ name: z.string(), address: z.string() }),
+  contact: simulationContactSchema,
   estimatedMinutes: z.number(),
   scenes: z.array(simulationSceneSchema).min(1),
+  conclusion: z.array(contentBlockSchema).optional(),
 }) satisfies z.ZodType<Omit<SimulationDocument, 'id'>>
 
 // Nunca lança: um documento malformado vira null, e quem chamou decide o que
