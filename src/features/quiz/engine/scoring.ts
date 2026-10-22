@@ -4,8 +4,17 @@ import type { QuizAnswer, QuizQuestion, QuizResultDocument } from '@/types/quiz.
 // Resultado sem userId, moduleId e completedAt: esses três dependem de sessão e do servidor, não da correção.
 export type QuizSummary = Omit<QuizResultDocument, 'userId' | 'moduleId' | 'completedAt'>
 
-export function gradeAnswer(question: QuizQuestion, selectedOptionId: string): boolean {
-  return selectedOptionId === question.correctOptionId
+export function getCorrectOptionIds(question: QuizQuestion): string[] {
+  return question.type === 'multiple_answer'
+    ? question.correctOptionIds
+    : [question.correctOptionId]
+}
+
+// Só acerta com a seleção idêntica ao gabarito: faltar ou sobrar uma alternativa conta como erro.
+export function gradeAnswer(question: QuizQuestion, selectedOptionIds: string[]): boolean {
+  const correct = new Set(getCorrectOptionIds(question))
+  const selected = new Set(selectedOptionIds)
+  return selected.size === correct.size && [...selected].every((id) => correct.has(id))
 }
 
 export function calculateScore(answers: QuizAnswer[], totalQuestions: number): number {
@@ -31,7 +40,7 @@ export function summarizeResult(
   const gradedAnswers = answers.flatMap((answer) => {
     const question = questionsById.get(answer.questionId)
     if (!question) return []
-    return [{ ...answer, correct: gradeAnswer(question, answer.selectedOptionId) }]
+    return [{ ...answer, correct: gradeAnswer(question, answer.selectedOptionIds) }]
   })
 
   const score = calculateScore(gradedAnswers, questions.length)

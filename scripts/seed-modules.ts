@@ -1,38 +1,11 @@
 // Popula módulos, lições e simulações no Firestore via Admin SDK, ver README para credencial.
-import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { cert, initializeApp, type ServiceAccount } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { CONTENT_MODULES, CONTENT_SIMULATIONS, type ContentModuleEntry } from '../src/content'
 import { hasPendingText, validateContent } from '../src/content/validate'
 import type { SimulationDocument } from '../src/types/simulation.types'
-
-// Fora do repositório é o lugar recomendado: assim a chave nunca entra num git add por engano.
-const HOME_SERVICE_ACCOUNT_PATH = join(homedir(), '.config', 'luminsight', 'service-account.json')
-const REPO_SERVICE_ACCOUNT_PATH = './firebase-service-account.json'
-
-const SERVICE_ACCOUNT_PATH =
-  process.env.FIREBASE_SERVICE_ACCOUNT_PATH ??
-  (existsSync(HOME_SERVICE_ACCOUNT_PATH) ? HOME_SERVICE_ACCOUNT_PATH : REPO_SERVICE_ACCOUNT_PATH)
+import { initAdminApp } from './lib/admin-app'
 
 const isDryRun = process.argv.includes('--dry-run')
-
-function loadServiceAccount(): ServiceAccount {
-  let raw: string
-  try {
-    raw = readFileSync(SERVICE_ACCOUNT_PATH, 'utf-8')
-  } catch {
-    console.error(
-      `Não encontrei o arquivo de credenciais em "${SERVICE_ACCOUNT_PATH}".\n` +
-        'Veja no README (seção "Seed do Firestore") como gerar e onde salvar esse arquivo.\n' +
-        'Dica: use a variável de ambiente FIREBASE_SERVICE_ACCOUNT_PATH para apontar para outro caminho.'
-    )
-    process.exit(1)
-  }
-
-  return JSON.parse(raw) as ServiceAccount
-}
 
 function moduleHasPendingContent(entry: ContentModuleEntry): boolean {
   return (
@@ -89,9 +62,7 @@ async function main(): Promise<void> {
     return
   }
 
-  const serviceAccount = loadServiceAccount()
-  initializeApp({ credential: cert(serviceAccount) })
-  const db = getFirestore()
+  const db = getFirestore(initAdminApp())
 
   console.log(
     `Populando Firestore com ${CONTENT_MODULES.length} módulo(s) e ${CONTENT_SIMULATIONS.length} simulação(ões)...`

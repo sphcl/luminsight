@@ -1,15 +1,15 @@
-import type { ModuleDocument } from '@/types/module.types'
 import {
   PLACEHOLDER_COLOR,
   PLACEHOLDER_ICON,
   buildLessonData,
   type LessonEntry,
+  type ModuleContent,
 } from '@/content/types'
 import { MODULE_01_ID } from './module-01'
 
 export const MODULE_02_ID = 'modulo-02'
 
-export const module02: ModuleDocument = {
+export const module02: ModuleContent = {
   title: 'Phishing: A Arte do Engano Digital',
   description:
     'Conheça os principais tipos de phishing, de e-mail a ligação e SMS, e aprenda a reconhecer uma tentativa de ataque antes de clicar.',
@@ -17,7 +17,6 @@ export const module02: ModuleDocument = {
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
   difficulty: 'iniciante',
-  estimatedMinutes: 35,
   totalLessons: 3,
   isActive: true,
   hasSimulation: true,

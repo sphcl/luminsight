@@ -1,14 +1,14 @@
-import type { ModuleDocument } from '@/types/module.types'
 import {
   PLACEHOLDER_COLOR,
   PLACEHOLDER_ICON,
   buildLessonData,
   type LessonEntry,
+  type ModuleContent,
 } from '@/content/types'
 
 export const MODULE_01_ID = 'modulo-01'
 
-export const module01: ModuleDocument = {
+export const module01: ModuleContent = {
   title: 'Fundamentos da Engenharia Social',
   description:
     'Entenda o que é engenharia social, quais emoções os golpistas exploram e por que a tecnologia sozinha não protege ninguém.',
@@ -16,7 +16,6 @@ export const module01: ModuleDocument = {
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
   difficulty: 'iniciante',
-  estimatedMinutes: 30,
   totalLessons: 3,
   isActive: true,
   hasSimulation: false,

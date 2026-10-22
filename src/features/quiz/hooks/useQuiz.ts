@@ -10,7 +10,7 @@ interface UseQuizReturn {
   currentQuestion: QuizQuestion | undefined
   questionNumber: number
   totalQuestions: number
-  selectedOptionId: string | null
+  selectedOptionIds: string[]
   hasAnswered: boolean
   isCorrect: boolean | null
   selectOption: (optionId: string) => void
@@ -26,7 +26,7 @@ export function useQuiz(
 ): UseQuizReturn {
   const [startedAt] = useState(() => Date.now())
   const [index, setIndex] = useState(0)
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([])
   const [answers, setAnswers] = useState<QuizAnswer[]>([])
   const [result, setResult] = useState<QuizSummary | null>(null)
   // Ref e não state porque dois cliques no mesmo render leriam o mesmo valor antigo e salvariam duas vezes.
@@ -43,16 +43,25 @@ export function useQuiz(
   function selectOption(optionId: string) {
     if (!currentQuestion || hasAnswered || isFinished) return
     if (!currentQuestion.options.some((option) => option.id === optionId)) return
-    setSelectedOptionId(optionId)
+
+    if (currentQuestion.type !== 'multiple_answer') {
+      setSelectedOptionIds([optionId])
+      return
+    }
+    setSelectedOptionIds((previous) =>
+      previous.includes(optionId)
+        ? previous.filter((id) => id !== optionId)
+        : [...previous, optionId]
+    )
   }
 
   function confirmAnswer() {
-    if (!currentQuestion || !selectedOptionId || hasAnswered || isFinished) return
+    if (!currentQuestion || selectedOptionIds.length === 0 || hasAnswered || isFinished) return
 
     const answer: QuizAnswer = {
       questionId: currentQuestion.id,
-      selectedOptionId,
-      correct: gradeAnswer(currentQuestion, selectedOptionId),
+      selectedOptionIds,
+      correct: gradeAnswer(currentQuestion, selectedOptionIds),
     }
     setAnswers((previous) =>
       previous.some((item) => item.questionId === answer.questionId)
@@ -66,7 +75,7 @@ export function useQuiz(
 
     if (index < questions.length - 1) {
       setIndex(index + 1)
-      setSelectedOptionId(null)
+      setSelectedOptionIds([])
       return
     }
 
@@ -82,7 +91,7 @@ export function useQuiz(
     currentQuestion,
     questionNumber: index + 1,
     totalQuestions: questions.length,
-    selectedOptionId: currentAnswer?.selectedOptionId ?? selectedOptionId,
+    selectedOptionIds: currentAnswer?.selectedOptionIds ?? selectedOptionIds,
     hasAnswered,
     isCorrect: currentAnswer?.correct ?? null,
     selectOption,

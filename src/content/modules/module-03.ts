@@ -1,15 +1,15 @@
-import type { ModuleDocument } from '@/types/module.types'
 import {
   PLACEHOLDER_COLOR,
   PLACEHOLDER_ICON,
   buildLessonData,
   type LessonEntry,
+  type ModuleContent,
 } from '@/content/types'
 import { MODULE_02_ID } from './module-02'
 
 export const MODULE_03_ID = 'modulo-03'
 
-export const module03: ModuleDocument = {
+export const module03: ModuleContent = {
   title: 'Inteligência Artificial nas Mãos dos Golpistas',
   description:
     'Veja como deepfakes, clonagem de voz e phishing personalizado por IA mudaram os golpes digitais, o cenário brasileiro em 2026 e o que diz a lei.',
@@ -17,7 +17,6 @@ export const module03: ModuleDocument = {
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
   difficulty: 'intermediario',
-  estimatedMinutes: 40,
   totalLessons: 3,
   isActive: true,
   hasSimulation: true,

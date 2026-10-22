@@ -1,24 +1,53 @@
 import { describe, it, expect } from 'vitest'
 import { calculateScore, gradeAnswer, isPassing, summarizeResult } from './scoring'
 import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
-import { buildQuestion, buildQuestions } from '@/test/fixtures/quiz'
+import { buildMultipleAnswerQuestion, buildQuestion, buildQuestions } from '@/test/fixtures/quiz'
 import type { QuizAnswer } from '@/types/quiz.types'
 
 function buildAnswers(total: number, correctCount: number): QuizAnswer[] {
   return Array.from({ length: total }, (_, index) => ({
     questionId: `q${index + 1}`,
-    selectedOptionId: index < correctCount ? 'a' : 'b',
+    selectedOptionIds: [index < correctCount ? 'a' : 'b'],
     correct: index < correctCount,
   }))
 }
 
 describe('gradeAnswer', () => {
   it('acerta quando a opção é a do gabarito', () => {
-    expect(gradeAnswer(buildQuestion({ correctOptionId: 'c' }), 'c')).toBe(true)
+    expect(gradeAnswer(buildQuestion({ correctOptionId: 'c' }), ['c'])).toBe(true)
   })
 
   it('erra quando a opção é outra', () => {
-    expect(gradeAnswer(buildQuestion({ correctOptionId: 'c' }), 'a')).toBe(false)
+    expect(gradeAnswer(buildQuestion({ correctOptionId: 'c' }), ['a'])).toBe(false)
+  })
+
+  it('erra resposta única com mais de uma opção marcada, mesmo incluindo a certa', () => {
+    expect(gradeAnswer(buildQuestion({ correctOptionId: 'c' }), ['c', 'a'])).toBe(false)
+  })
+})
+
+describe('gradeAnswer em multiple_answer', () => {
+  const question = buildMultipleAnswerQuestion({ correctOptionIds: ['a', 'd'] })
+
+  it('acerta só com a seleção exata, em qualquer ordem', () => {
+    expect(gradeAnswer(question, ['a', 'd'])).toBe(true)
+    expect(gradeAnswer(question, ['d', 'a'])).toBe(true)
+  })
+
+  it('seleção parcial conta como erro', () => {
+    expect(gradeAnswer(question, ['a'])).toBe(false)
+  })
+
+  it('seleção a mais conta como erro', () => {
+    expect(gradeAnswer(question, ['a', 'd', 'b'])).toBe(false)
+  })
+
+  it('seleção vazia conta como erro', () => {
+    expect(gradeAnswer(question, [])).toBe(false)
+  })
+
+  it('marcar a mesma opção duas vezes não vira acerto', () => {
+    expect(gradeAnswer(question, ['a', 'a'])).toBe(false)
   })
 })
 
@@ -106,13 +135,13 @@ describe('summarizeResult', () => {
   })
 
   it('recorrige pelo gabarito ignorando o correct informado', () => {
-    const forged: QuizAnswer[] = [{ questionId: 'q1', selectedOptionId: 'b', correct: true }]
+    const forged: QuizAnswer[] = [{ questionId: 'q1', selectedOptionIds: ['b'], correct: true }]
 
     expect(summarizeResult(forged, questions, 10).answers[0]?.correct).toBe(false)
   })
 
   it('ignora resposta de questão que não existe', () => {
-    const answers: QuizAnswer[] = [{ questionId: 'q99', selectedOptionId: 'a', correct: true }]
+    const answers: QuizAnswer[] = [{ questionId: 'q99', selectedOptionIds: ['a'], correct: true }]
 
     expect(summarizeResult(answers, questions, 10)).toMatchObject({
       correctAnswers: 0,

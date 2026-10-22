@@ -1,6 +1,10 @@
 import type { QuizQuestion } from '@/types/quiz.types'
 
-type WithoutAnswer<T> = T extends QuizQuestion ? Omit<T, 'correctOptionId' | 'explanation'> : never
+type WithoutAnswer<T> = T extends QuizQuestion
+  ? T extends { type: 'multiple_answer' }
+    ? Omit<T, 'correctOptionIds' | 'explanation'> & { expectedSelections: number }
+    : Omit<T, 'correctOptionId' | 'explanation'>
+  : never
 
 export type PublicQuestion = WithoutAnswer<QuizQuestion>
 
@@ -20,6 +24,14 @@ export function toPublicQuestion(question: QuizQuestion): PublicQuestion {
         type: question.type,
         imageSrc: question.imageSrc,
         imageAlt: question.imageAlt,
+      }
+    // Só a quantidade de corretas vai pra tela, nunca quais são.
+    case 'multiple_answer':
+      return {
+        ...base,
+        type: question.type,
+        scenario: question.scenario,
+        expectedSelections: question.correctOptionIds.length,
       }
   }
 }

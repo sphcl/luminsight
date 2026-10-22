@@ -24,3 +24,25 @@ export function buildQuestions(count: number): QuizQuestion[] {
     buildQuestion({ id: `q${index + 1}`, prompt: `Pergunta ${index + 1}` })
   )
 }
+
+type MultipleAnswerQuestion = Extract<QuizQuestion, { type: 'multiple_answer' }>
+
+export function buildMultipleAnswerQuestion(
+  overrides: Partial<MultipleAnswerQuestion> = {}
+): QuizQuestion {
+  return {
+    id: 'q1',
+    type: 'multiple_answer',
+    prompt: 'Quais estão certas?',
+    options: [
+      { id: 'a', text: 'Alternativa A' },
+      { id: 'b', text: 'Alternativa B' },
+      { id: 'c', text: 'Alternativa C' },
+      { id: 'd', text: 'Alternativa D' },
+      { id: 'e', text: 'Alternativa E' },
+    ],
+    correctOptionIds: ['a', 'd'],
+    explanation: 'Explicação',
+    ...overrides,
+  }
+}

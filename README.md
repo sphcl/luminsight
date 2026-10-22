@@ -46,6 +46,7 @@ npm run dev
 | `npm run test:run` | Testes uma única vez |
 | `npm run test:coverage` | Cobertura de testes |
 | `npm run seed` | Popula o Firestore com o conteúdo de `src/content/` (ver "Seed do Firestore") |
+| `npm run dev:complete-modules -- --email=<email>` | Só para teste manual: marca os módulos até `--until` (padrão `modulo-04`) como concluídos para a conta, via Admin SDK |
 
 ## Variáveis de ambiente
 

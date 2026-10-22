@@ -17,7 +17,8 @@
     "test:rules": "npx --yes firebase-tools@15.33.0 emulators:exec --only firestore --project demo-luminsight 'vitest run --config vitest.rules.config.ts'",
     "test:coverage": "vitest run --coverage",
     "audit:check": "tsx --tsconfig tsconfig.scripts.json scripts/audit-check.ts",
-    "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed-modules.ts"
+    "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed-modules.ts",
+    "dev:complete-modules": "tsx --tsconfig tsconfig.scripts.json scripts/dev-complete-modules.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

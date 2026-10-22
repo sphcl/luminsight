@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ContentBlock, HighlightVariant } from '@/types/module.types'
 import { cn } from '@/utils/helpers/classnames'
 
@@ -35,11 +36,54 @@ function isHttpsUrl(value: string): boolean {
   }
 }
 
+// O aviso de nova aba fica dentro do <a> pra entrar no nome acessível que o leitor de tela anuncia.
+function ExternalLinkCard({
+  url,
+  label,
+  title,
+  detail,
+}: {
+  url: string
+  label: string
+  title: string
+  detail?: string
+}) {
+  if (!isHttpsUrl(url)) return null
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex flex-col gap-1 rounded-card border border-surface-border bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+    >
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="font-semibold text-primary-700">{title}</span>
+      {detail && <span className="text-sm text-slate-600">{detail}</span>}
+      <span className="text-xs text-slate-500">Abre em uma nova aba, fora do LumInsight.</span>
+    </a>
+  )
+}
+
+const BOLD_MARKER = '**'
+
+// Conteúdo vem do Firestore: marcador sem par fica literal em vez de engolir o resto do parágrafo.
+function renderBold(content: string): ReactNode[] {
+  const parts = content.split(BOLD_MARKER)
+  if (parts.length % 2 === 0) return [content]
+
+  return parts.map((part, index) => {
+    if (index % 2 === 0) return part
+    // "****" sem nada no meio não vira <strong> vazio, volta pro texto como estava.
+    return part === '' ? BOLD_MARKER + BOLD_MARKER : <strong key={index}>{part}</strong>
+  })
+}
+
 // Renderizo tudo como texto via JSX porque o conteúdo vem do Firestore e não confio nele como HTML.
 export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
   switch (block.type) {
     case 'text':
-      return <p className="leading-relaxed text-slate-700">{block.content}</p>
+      return <p className="leading-relaxed text-slate-700">{renderBold(block.content)}</p>
 
     case 'heading':
       return <h2 className="pt-2 text-xl font-semibold text-slate-900">{block.content}</h2>
@@ -92,25 +136,25 @@ export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
         </figure>
       )
 
-    case 'video': {
-      if (!isHttpsUrl(block.url)) return null
-
+    case 'video':
       return (
-        <a
-          href={block.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col gap-1 rounded-card border border-surface-border bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-        >
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Vídeo externo
-          </span>
-          <span className="font-semibold text-primary-700">{block.title}</span>
-          {block.caption && <span className="text-sm text-slate-600">{block.caption}</span>}
-          <span className="text-xs text-slate-500">Abre em uma nova aba, fora do LumInsight.</span>
-        </a>
+        <ExternalLinkCard
+          url={block.url}
+          label="Vídeo externo"
+          title={block.title}
+          detail={block.caption}
+        />
       )
-    }
+
+    case 'link':
+      return (
+        <ExternalLinkCard
+          url={block.url}
+          label="Link externo"
+          title={block.title}
+          detail={block.description}
+        />
+      )
 
     default: {
       // Atribuo a never pra o type-check quebrar se entrar um type novo sem case aqui.

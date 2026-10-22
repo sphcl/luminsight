@@ -51,6 +51,23 @@ export default tseslint.config(
     },
   },
   {
+    // Os scripts usam Admin SDK e credencial de administrador; nada disso pode chegar no bundle do app.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/scripts/**', 'firebase-admin', 'firebase-admin/*'],
+              message: 'Código do app não importa scripts nem Admin SDK.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Script de CLI (Node, não roda no browser): progresso em console.log é
     // a interface do usuário aqui, não um resíduo de debug esquecido.
     files: ['scripts/**/*.ts'],

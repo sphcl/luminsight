@@ -2,16 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { toPublicQuestion } from './public-question'
 import type { QuizQuestion } from '@/types/quiz.types'
 
-const base = {
+const common = {
   id: 'q1',
   prompt: 'Pergunta',
   options: [
     { id: 'a', text: 'A' },
     { id: 'b', text: 'B' },
   ],
-  correctOptionId: 'b',
   explanation: 'Porque B',
 }
+
+const base = { ...common, correctOptionId: 'b' }
 
 const questions: QuizQuestion[] = [
   { ...base, type: 'multiple_choice' },
@@ -43,5 +44,18 @@ describe('toPublicQuestion', () => {
   it('não repassa campo extra que alguém pendure na questão', () => {
     const tampered = { ...questions[0]!, answerKey: 'b' } as unknown as QuizQuestion
     expect(toPublicQuestion(tampered)).not.toHaveProperty('answerKey')
+  })
+
+  it('multiple_answer leva só a quantidade de corretas, nunca quais são', () => {
+    const visible = toPublicQuestion({
+      ...common,
+      type: 'multiple_answer',
+      correctOptionIds: ['a', 'b'],
+      scenario: 'Cenário',
+    })
+
+    expect(visible).toMatchObject({ expectedSelections: 2, scenario: 'Cenário' })
+    expect(visible).not.toHaveProperty('correctOptionIds')
+    expect(visible).not.toHaveProperty('explanation')
   })
 })

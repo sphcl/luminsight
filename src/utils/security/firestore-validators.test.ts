@@ -86,6 +86,15 @@ describe('parseLesson', () => {
     ).toBeNull()
   })
 
+  it('aceita link https e rejeita link fora de https', () => {
+    const link = { type: 'link', url: 'https://cert.br/contato/', title: 'CERT.br' }
+    expect(parseLesson({ ...validLesson, content: [link] })).not.toBeNull()
+
+    for (const url of ['http://cert.br', 'javascript:alert(1)']) {
+      expect(parseLesson({ ...validLesson, content: [{ ...link, url }] })).toBeNull()
+    }
+  })
+
   it('rejeita video com url que não é https', () => {
     for (const url of ['javascript:alert(1)', 'http://example.com/video', 'não é url']) {
       expect(
