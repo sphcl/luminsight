@@ -47,10 +47,10 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
     <>
       <section
         aria-label="Caixa de entrada simulada"
-        className="grid overflow-hidden rounded-card border border-surface-border bg-white shadow-card md:grid-cols-[16rem_1fr]"
+        className="grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:grid-cols-[16rem_1fr]"
       >
-        <div className="border-b border-surface-border bg-surface-muted md:border-b-0 md:border-r">
-          <div className="flex items-center justify-between gap-2 border-b border-surface-border px-4 py-3">
+        <div className="border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-r">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
             <h2 className="text-sm font-semibold text-slate-900">Caixa de entrada</h2>
             <Badge variant="warning">Fictícia</Badge>
           </div>
@@ -106,7 +106,7 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
                   )}
                 </dl>
               </div>
-              <div className="flex flex-col gap-3 border-t border-surface-border pt-3 text-sm leading-relaxed text-slate-800">
+              <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 text-sm leading-relaxed text-slate-800">
                 {body.map((message, index) => (
                   <p key={index} className="whitespace-pre-line">
                     {message.content}
@@ -116,7 +116,7 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
             </article>
           )}
 
-          <div className="border-t border-surface-border pt-4">
+          <div className="border-t border-slate-200 pt-4">
             <SceneDecision session={session} variant="classify" />
           </div>
         </div>
@@ -144,7 +144,7 @@ function InboxItem({ scene, messages, contact, isOpen, classification }: InboxIt
     <li
       aria-current={isOpen ? 'true' : undefined}
       className={cn(
-        'flex flex-col gap-1 border-b border-surface-border px-4 py-3 text-sm',
+        'flex flex-col gap-1 border-b border-slate-200 px-4 py-3 text-sm',
         isOpen ? 'bg-white' : 'bg-transparent'
       )}
     >

@@ -29,7 +29,7 @@ export function Sidebar({ isOpen, onNavigate }: SidebarProps) {
           desktop a sidebar é estática (md:static), então isso nunca aparece. */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
           onClick={onNavigate}
           aria-hidden="true"
         />
@@ -38,8 +38,8 @@ export function Sidebar({ isOpen, onNavigate }: SidebarProps) {
       <nav
         aria-label="Navegação principal"
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-surface-border bg-surface p-4',
-          'transition-transform duration-200 md:static md:z-0 md:w-56 md:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-rule bg-canvas p-4',
+          'transition-transform duration-200 motion-reduce:transition-none md:static md:z-0 md:w-56 md:translate-x-0',
           isOpen && 'translate-x-0'
         )}
       >
@@ -51,9 +51,10 @@ export function Sidebar({ isOpen, onNavigate }: SidebarProps) {
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600',
-                    'transition-colors hover:bg-surface-muted',
-                    isActive && 'bg-primary-50 text-primary-700'
+                    // Selecionado é régua de 3px à esquerda, nunca preenchimento inteiro.
+                    'flex min-h-11 items-center gap-3 border-l-[3px] border-transparent px-3 text-sm font-medium text-ink-soft',
+                    'transition-colors hover:bg-surface-muted hover:text-ink motion-reduce:transition-none',
+                    isActive && 'border-accent text-ink'
                   )
                 }
               >

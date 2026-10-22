@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui'
+import { primaryLinkClass } from '@/components/ui/linkStyles'
+import { cn } from '@/utils/helpers/classnames'
 
 interface ContentUnavailableProps {
   title: string
@@ -16,12 +18,9 @@ export function ContentUnavailable({
 }: ContentUnavailableProps) {
   return (
     <Card role="alert" className="mx-auto max-w-lg text-center">
-      <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-      <p className="mt-2 text-sm text-slate-600">{description}</p>
-      <Link
-        to={backTo}
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white hover:bg-primary-700"
-      >
+      <h1 className="page-title">{title}</h1>
+      <p className="mt-3 text-ink-soft">{description}</p>
+      <Link to={backTo} className={cn(primaryLinkClass, 'mt-6')}>
         {backLabel}
       </Link>
     </Card>

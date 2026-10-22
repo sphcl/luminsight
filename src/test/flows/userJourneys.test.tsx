@@ -114,7 +114,8 @@ async function answerQuiz(user: ReturnType<typeof userEvent.setup>, optionText: 
   }
 }
 
-describe('jornadas do usuário', () => {
+// Cada jornada roda o app inteiro; com a instrumentação de cobertura passa fácil dos 5s padrão.
+describe('jornadas do usuário', { timeout: 20_000 }, () => {
   beforeEach(() => {
     mockReducedMotion(true)
     seedTrail()

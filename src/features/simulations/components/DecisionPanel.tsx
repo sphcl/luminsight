@@ -17,11 +17,11 @@ const listStyles: Record<DecisionPanelVariant, string> = {
 
 const optionStyles: Record<DecisionPanelVariant, string> = {
   'quick-reply':
-    'rounded-full border border-primary-300 bg-white px-4 py-2 text-left text-sm text-primary-700 hover:bg-primary-50',
+    'min-h-11 rounded-full border border-indigo-500 bg-white px-4 py-2 text-left text-sm text-indigo-700 hover:bg-indigo-50',
   classify:
-    'rounded-lg border border-surface-border bg-white px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-surface-muted',
+    'min-h-11 rounded-lg border border-slate-500 bg-white px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50',
   response:
-    'rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-left text-sm text-white hover:bg-slate-700',
+    'min-h-11 rounded-lg border border-slate-500 bg-slate-800 px-4 py-3 text-left text-sm text-white hover:bg-slate-700',
 }
 
 export function DecisionPanel({ decision, variant, onChoose }: DecisionPanelProps) {
@@ -43,7 +43,7 @@ export function DecisionPanel({ decision, variant, onChoose }: DecisionPanelProp
             type="button"
             onClick={() => onChoose(option.id)}
             className={cn(
-              'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+              'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
               // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
               optionStyles[variant]
             )}

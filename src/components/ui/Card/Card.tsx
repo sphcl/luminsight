@@ -10,9 +10,10 @@ export function Card({ interactive = false, className, children, ...props }: Car
   return (
     <div
       className={cn(
-        'rounded-card border border-surface-border bg-surface p-5 shadow-card',
+        // Régua de 1px no lugar de sombra; o card interativo só escurece a régua no hover.
+        'rounded-card border border-rule bg-surface p-5',
         interactive &&
-          'cursor-pointer transition-shadow duration-200 hover:shadow-card-hover',
+          'cursor-pointer transition-colors duration-150 hover:border-strong motion-reduce:transition-none',
         className
       )}
       {...props}

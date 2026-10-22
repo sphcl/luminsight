@@ -13,7 +13,9 @@ export function isModuleComplete(module: ModuleWithId, progress: ProgressDocumen
 
 export function hasAnyProgress(progress: ProgressDocument): boolean {
   return (
-    progress.lessonsCompleted.length > 0 || progress.simulationCompleted || progress.quizAttempts > 0
+    progress.lessonsCompleted.length > 0 ||
+    progress.simulationCompleted ||
+    progress.quizAttempts > 0
   )
 }
 

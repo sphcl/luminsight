@@ -9,19 +9,20 @@ interface BadgeProps {
   children: ReactNode
 }
 
+// Rótulo em caixa alta com fundo tonal; o texto sempre diz o estado, a cor só reforça.
 const variantStyles: Record<BadgeVariant, string> = {
-  neutral: 'bg-slate-100 text-slate-700',
-  primary: 'bg-primary-50 text-primary-700',
-  success: 'bg-success-50 text-success-700',
-  warning: 'bg-warning-50 text-warning-700',
-  danger: 'bg-danger-50 text-danger-700',
+  neutral: 'border border-rule bg-transparent text-ink-soft',
+  primary: 'bg-accent-soft text-accent',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger',
 }
 
 export function Badge({ variant = 'neutral', className, children }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        'inline-flex items-center rounded-sm px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-[0.1em]',
         // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
         variantStyles[variant],
         className

@@ -1,5 +1,4 @@
 import { forwardRef } from 'react'
-import { Badge } from '@/components/ui'
 import { hasPendingText } from '@/content/validate'
 import type { PublicQuestion } from '@/features/quiz/types/public-question'
 import type { QuestionType } from '@/types/quiz.types'
@@ -36,11 +35,12 @@ function getOptionState(
   return isSelected ? 'selected' : 'idle'
 }
 
+// Selecionado é régua de 3px à esquerda, nunca preenchimento; certo e errado ganham fundo tonal e rótulo em texto.
 const optionStateStyles = {
-  idle: 'border-surface-border bg-white',
-  selected: 'border-primary-500 bg-primary-50',
-  correct: 'border-success-500 bg-success-50',
-  wrong: 'border-danger-500 bg-danger-50',
+  idle: 'border-l-transparent',
+  selected: 'border-l-accent',
+  correct: 'border-l-success bg-success-soft',
+  wrong: 'border-l-danger bg-danger-soft',
 }
 
 export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
@@ -50,15 +50,13 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
     const hintId = `question-${question.id}-hint`
 
     return (
-      <div className="flex flex-col gap-4">
-        <Badge className="self-start">{TYPE_LABELS[question.type]}</Badge>
+      <div className="reading flex flex-col gap-5">
+        <p className="eyebrow">{TYPE_LABELS[question.type]}</p>
 
         {scenario && (
-          <aside className="rounded-card border-l-4 border-primary-500 bg-primary-50 p-4 leading-relaxed text-slate-800">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">
-              Cenário
-            </p>
-            <p className="mt-1 whitespace-pre-line">{scenario}</p>
+          <aside className="rounded-card bg-surface-muted p-5 text-ink">
+            <p className="eyebrow">Cenário</p>
+            <p className="mt-2 whitespace-pre-line">{scenario}</p>
           </aside>
         )}
 
@@ -67,7 +65,7 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
             <div
               role="img"
               aria-label={question.imageAlt}
-              className="flex h-48 items-center justify-center rounded-card border border-dashed border-surface-border bg-surface-muted p-4 text-center text-sm text-slate-500"
+              className="flex h-48 items-center justify-center rounded-card border border-dashed border-rule bg-surface-muted p-4 text-center text-sm text-ink-muted"
             >
               Imagem ainda em produção: {question.imageAlt}
             </div>
@@ -75,7 +73,7 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
             <img
               src={question.imageSrc}
               alt={question.imageAlt}
-              className="max-h-80 w-full rounded-card border border-surface-border object-contain"
+              className="max-h-80 w-full rounded-card border border-rule object-contain"
             />
           ))}
 
@@ -87,25 +85,30 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
           <legend
             ref={legendRef}
             tabIndex={-1}
-            className="mb-3 text-lg font-semibold text-slate-900 focus:outline-none"
+            className="mb-4 font-serif text-[1.6875em] font-normal leading-snug tracking-[-0.015em] text-ink focus:outline-none"
           >
             {question.prompt}
           </legend>
           {isMultiple && (
-            <p id={hintId} className="-mt-2 mb-2 text-sm font-medium text-primary-700">
+            <p id={hintId} className="-mt-2 mb-3 text-[0.9em] font-medium text-accent">
               Mais de uma alternativa está correta. Marque as {question.expectedSelections}{' '}
               alternativas corretas.
             </p>
           )}
-          <div className={cn('grid gap-2', question.type === 'true_false' && 'sm:grid-cols-2')}>
+          <div
+            className={cn(
+              'grid border-t border-rule',
+              question.type === 'true_false' && 'sm:grid-cols-2 sm:gap-x-6'
+            )}
+          >
             {question.options.map((option) => {
               const state = getOptionState(option.id, selectedOptionIds, revealedCorrectOptionIds)
               return (
                 <label
                   key={option.id}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg border p-3 text-sm text-slate-800 transition-colors',
-                    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500',
+                    'flex min-h-14 items-center gap-3 border-b border-l-[3px] border-b-rule py-3 pl-4 pr-3 text-ink transition-colors motion-reduce:transition-none',
+                    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent',
                     isLocked ? 'cursor-default' : 'cursor-pointer hover:bg-surface-muted',
                     // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
                     optionStateStyles[state]
@@ -117,14 +120,18 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
                     value={option.id}
                     checked={selectedOptionIds.includes(option.id)}
                     onChange={() => onSelect(option.id)}
-                    className="accent-primary-600"
+                    className="accent-accent"
                   />
                   <span className="flex-1">{option.text}</span>
                   {state === 'correct' && (
-                    <span className="text-xs font-semibold text-success-700">Correta</span>
+                    <span className="text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-success">
+                      Correta
+                    </span>
                   )}
                   {state === 'wrong' && (
-                    <span className="text-xs font-semibold text-danger-700">Sua resposta</span>
+                    <span className="text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-danger">
+                      Sua resposta
+                    </span>
                   )}
                 </label>
               )

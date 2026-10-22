@@ -19,12 +19,14 @@ export function ProgressBar({
   const percentage = Math.min(Math.max((value / safeMax) * 100, 0), 100)
 
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
+    <div className={cn('flex flex-col gap-2', className)}>
       {(label || showPercentage) && (
         <div className="flex items-center justify-between text-sm">
-          {label && <span className="font-medium text-slate-700">{label}</span>}
+          {label && <span className="eyebrow">{label}</span>}
           {showPercentage && (
-            <span className="text-slate-500">{Math.round(percentage)}%</span>
+            <span className="text-sm font-medium tabular-nums text-ink">
+              {Math.round(percentage)}%
+            </span>
           )}
         </div>
       )}
@@ -35,10 +37,10 @@ export function ProgressBar({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label}
-        className="h-2 w-full overflow-hidden rounded-full bg-slate-200"
+        className="h-0.5 w-full overflow-hidden bg-rule"
       >
         <div
-          className="h-full rounded-full bg-primary-600 transition-all duration-500 ease-out"
+          className="h-full bg-accent transition-[width] duration-500 ease-out motion-reduce:transition-none"
           style={{ width: `${percentage}%` }}
         />
       </div>

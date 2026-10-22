@@ -27,8 +27,8 @@ export function DecisionFeedback({
     <div
       role="status"
       className={cn(
-        'flex flex-col gap-3 rounded-card border p-4',
-        feedback.isCorrect ? 'border-success-200 bg-success-50' : 'border-danger-200 bg-danger-50'
+        'flex flex-col gap-3 rounded-lg border p-4',
+        feedback.isCorrect ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'
       )}
     >
       <p
@@ -36,7 +36,7 @@ export function DecisionFeedback({
         tabIndex={-1}
         className={cn(
           'font-semibold focus:outline-none',
-          feedback.isCorrect ? 'text-success-700' : 'text-danger-700'
+          feedback.isCorrect ? 'text-emerald-700' : 'text-red-700'
         )}
       >
         {feedback.isCorrect ? 'Boa decisão!' : 'Essa decisão favorecia o golpe.'}

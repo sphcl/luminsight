@@ -40,7 +40,9 @@ describe('Trilha', () => {
     renderTrilha()
 
     for (let order = 1; order <= 5; order++) {
-      expect(await screen.findByText(`${order}. Módulo ${order}`)).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: `${order}. Módulo ${order}` })
+      ).toBeInTheDocument()
     }
     expect(screen.getAllByRole('progressbar')).toHaveLength(5)
   })
@@ -81,7 +83,7 @@ describe('Trilha', () => {
   it('não mostra o aviso quando não há [PENDENTE]', async () => {
     renderTrilha()
 
-    await screen.findByText('1. Módulo 1')
+    await screen.findByRole('heading', { name: '1. Módulo 1' })
     expect(screen.queryByText(/em construção/)).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 import type { Timestamp, FieldValue } from 'firebase/firestore'
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'scenario' | 'visual' | 'multiple_answer'
+export type QuestionType =
+  'multiple_choice' | 'true_false' | 'scenario' | 'visual' | 'multiple_answer'
 
 export interface QuizOption {
   id: string

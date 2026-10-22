@@ -10,20 +10,21 @@ export function AnswerFeedback({ isCorrect, correctOptionText, explanation }: An
   return (
     <div
       role="status"
+      // Revelação do feedback: entra com o mesmo movimento curto das lições, e nada com reduced motion.
       className={cn(
-        'rounded-card border p-4',
-        isCorrect ? 'border-success-200 bg-success-50' : 'border-danger-200 bg-danger-50'
+        'reading rounded-card p-5 motion-safe:animate-enter',
+        isCorrect ? 'bg-success-soft' : 'bg-danger-soft'
       )}
     >
-      <p className={cn('font-semibold', isCorrect ? 'text-success-700' : 'text-danger-700')}>
+      <p className={cn('font-semibold', isCorrect ? 'text-success' : 'text-danger')}>
         {isCorrect ? 'Você acertou!' : 'Não foi dessa vez.'}
       </p>
       {!isCorrect && (
-        <p className="mt-1 text-sm text-slate-800">
+        <p className="mt-1 text-[0.9em] text-ink">
           Resposta correta: <span className="font-semibold">{correctOptionText}</span>
         </p>
       )}
-      <p className="mt-2 text-sm leading-relaxed text-slate-700">{explanation}</p>
+      <p className="mt-2 text-[0.9em] text-ink-soft">{explanation}</p>
     </div>
   )
 }

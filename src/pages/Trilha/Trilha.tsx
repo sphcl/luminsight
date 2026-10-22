@@ -3,6 +3,7 @@ import { Badge, Card, ProgressBar, Skeleton } from '@/components/ui'
 import { ROUTES, buildModuleRoute } from '@/constants/routes'
 import { hasPendingText } from '@/content/validate'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
+import { ModuleNumber } from '@/features/modules/components/ModuleNumber'
 import { useModules, type ModuleWithStatus } from '@/features/modules/hooks/useModules'
 import { formatMinutes, getDifficultyLabel, getStatusBadge } from '@/features/modules/labels'
 import { cn } from '@/utils/helpers/classnames'
@@ -26,26 +27,24 @@ export function Trilha() {
   const hasPendingContent = data?.some(hasPendingText) ?? false
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Trilha de aprendizado</h1>
-        <p className="mt-1 text-slate-600">
+        <p className="eyebrow">Cinco módulos</p>
+        <h1 className="page-title mt-2">Trilha de aprendizado</h1>
+        <p className="mt-3 text-ink-soft">
           Os módulos liberam em sequência, conforme você conclui o anterior.
         </p>
       </header>
 
       {hasPendingContent && (
-        <div
-          role="status"
-          className="rounded-card border border-warning-200 bg-warning-50 p-4 text-sm text-slate-800"
-        >
+        <div role="status" className="rounded-card bg-warning-soft p-4 text-sm text-ink">
           Parte do conteúdo da trilha ainda está em construção. Os textos marcados com [PENDENTE]
           serão substituídos pela versão final.
         </div>
       )}
 
       {isLoading || !data ? (
-        <ol className="flex flex-col gap-4" aria-busy="true" aria-label="Carregando módulos">
+        <ol className="flex flex-col gap-6" aria-busy="true" aria-label="Carregando módulos">
           {Array.from({ length: SKELETON_CARDS }, (_, index) => (
             <li key={index}>
               <ModuleCardSkeleton />
@@ -54,12 +53,17 @@ export function Trilha() {
         </ol>
       ) : data.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-600">Nenhum módulo publicado ainda.</p>
+          <p className="text-sm text-ink-soft">Nenhum módulo publicado ainda.</p>
         </Card>
       ) : (
-        <ol className="flex flex-col gap-4">
-          {data.map((module) => (
-            <li key={module.id}>
+        <ol className="flex flex-col border-t border-rule">
+          {data.map((module, index) => (
+            <li
+              key={module.id}
+              className="border-b border-rule motion-safe:animate-enter"
+              // Entrada escalonada: o delay vai por CSSOM, que a CSP sem unsafe-inline permite.
+              style={{ animationDelay: `${index * 60}ms` }}
+            >
               <ModuleCard module={module} />
             </li>
           ))}
@@ -74,29 +78,32 @@ function ModuleCard({ module }: { module: ModuleWithStatus }) {
   const statusBadge = getStatusBadge(module.status)
 
   const content = (
-    <Card
-      interactive={!isLocked}
-      className={cn('flex flex-col gap-3', isLocked && 'cursor-not-allowed opacity-60')}
-    >
+    <div className="relative flex flex-col gap-3 py-6 md:pl-20">
+      <ModuleNumber order={module.order} className="md:top-6" />
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
         <Badge>{getDifficultyLabel(module.difficulty)}</Badge>
       </div>
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          {module.order}. {module.title}
+        <h2
+          className={cn(
+            'font-serif text-2xl font-normal tracking-[-0.015em]',
+            isLocked ? 'text-ink-soft' : 'text-ink'
+          )}
+        >
+          <span className="sr-only">{module.order}.</span> {module.title}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">{module.description}</p>
+        <p className="mt-2 text-ink-soft">{module.description}</p>
       </div>
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-muted">
         {formatMinutes(module.estimatedMinutes)} · {module.totalLessons}{' '}
         {module.totalLessons === 1 ? 'lição' : 'lições'}
       </p>
       <ProgressBar value={module.progressPercent} label="Conclusão" showPercentage />
       {isLocked && (
-        <p className="text-sm text-slate-500">Conclua o módulo anterior para liberar este.</p>
+        <p className="text-sm text-ink-muted">Conclua o módulo anterior para liberar este.</p>
       )}
-    </Card>
+    </div>
   )
 
   if (isLocked) {
@@ -111,7 +118,7 @@ function ModuleCard({ module }: { module: ModuleWithStatus }) {
     <Link
       to={buildModuleRoute(module.id)}
       data-testid={`module-card-${module.id}`}
-      className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+      className="group block transition-colors hover:bg-surface-muted motion-reduce:transition-none"
     >
       {content}
     </Link>
@@ -122,8 +129,8 @@ function ModuleCardSkeleton() {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex gap-2">
-        <Skeleton className="h-5 w-20 rounded-full" />
-        <Skeleton className="h-5 w-24 rounded-full" />
+        <Skeleton className="h-5 w-20 rounded-sm" />
+        <Skeleton className="h-5 w-24 rounded-sm" />
       </div>
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-4 w-full" />

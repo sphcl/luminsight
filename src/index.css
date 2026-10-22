@@ -1,20 +1,97 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* Canais RGB pra o Tailwind conseguir aplicar opacidade (bg-accent/10). Contraste medido em docs/seguranca.md. */
+  :root {
+    --color-bg: 255 255 255;
+    --color-surface: 255 255 255;
+    --color-surface-muted: 247 248 255;
+    --color-text: 17 17 17;
+    --color-text-soft: 74 74 74;
+    --color-text-muted: 107 107 107;
+    --color-border: 229 229 229;
+    --color-border-strong: 17 17 17;
+    --color-border-control: 140 140 140;
+    --color-accent: 29 43 214;
+    --color-accent-hover: 20 31 158;
+    --color-accent-soft: 247 248 255;
+    --color-on-accent: 255 255 255;
+    --color-success: 20 108 67;
+    --color-success-soft: 230 244 236;
+    --color-danger: 180 35 24;
+    --color-danger-soft: 254 243 242;
+    --color-warning: 138 82 0;
+    --color-warning-soft: 255 248 235;
+    --reading-scale: 1;
+    color-scheme: light;
+  }
+
+  .dark {
+    --color-bg: 13 13 13;
+    --color-surface: 23 23 23;
+    --color-surface-muted: 23 23 23;
+    --color-text: 245 245 245;
+    --color-text-soft: 212 212 212;
+    --color-text-muted: 163 163 163;
+    --color-border: 46 46 46;
+    --color-border-strong: 245 245 245;
+    --color-border-control: 107 107 107;
+    --color-accent: 138 150 255;
+    --color-accent-hover: 168 177 255;
+    --color-accent-soft: 26 28 51;
+    /* Branco sobre #8A96FF dá 2.66:1 e reprova; quase preto dá 7.30:1. */
+    --color-on-accent: 13 13 13;
+    --color-success: 61 214 140;
+    --color-success-soft: 15 42 29;
+    --color-danger: 255 107 107;
+    --color-danger-soft: 58 20 20;
+    --color-warning: 245 165 36;
+    --color-warning-soft: 51 36 10;
+    color-scheme: dark;
+  }
+
+  /* O controle de tamanho de fonte escala a raiz: tudo que é rem (texto, espaço, alvo de toque) cresce junto. */
   html {
+    font-size: calc(100% * var(--reading-scale));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-surface-muted text-slate-900 font-sans;
+    @apply bg-canvas font-sans text-ink;
   }
 
+  /* Anel no acento com folga no fundo: passa 3:1 contra o fundo nos dois temas. */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
+  }
+
+  /* Só durante a troca de tema, e nunca com prefers-reduced-motion (ver usePreferences). */
+  html.theme-animating,
+  html.theme-animating * {
+    transition:
+      background-color 200ms ease,
+      color 200ms ease,
+      border-color 200ms ease !important;
+  }
+}
+
+@layer components {
+  /* Corpo de leitura que acompanha o controle de tamanho de fonte do header. */
+  .reading {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .eyebrow {
+    @apply text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-ink-muted;
+  }
+
+  .page-title {
+    @apply font-serif text-4xl font-normal tracking-[-0.025em] text-ink sm:text-5xl;
   }
 }

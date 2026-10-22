@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { Licao } from './Licao'
 import { useAuth } from '@/hooks/useAuth'
@@ -114,5 +115,34 @@ describe('Licao', () => {
       'href',
       '/modulos/modulo-01'
     )
+  })
+
+  it('dá pra concluir a lição só com teclado, na ordem certa de foco', async () => {
+    vi.mocked(getLessons).mockResolvedValue([
+      buildLesson({ id: 'licao-01', title: 'Primeira lição', order: 1, readingTimeSeconds: 0 }),
+      buildLesson({ id: 'licao-02', title: 'Segunda lição', order: 2, readingTimeSeconds: 0 }),
+    ])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderLicao('/modulos/modulo-01/licoes/licao-01')
+    await screen.findByRole('heading', { name: 'Primeira lição' })
+
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'Módulo 1' })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'Voltar ao módulo' })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Concluir e ir para a próxima' })).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByRole('heading', { name: 'Segunda lição' })).toBeInTheDocument()
+    expect(markLessonCompleted).toHaveBeenCalledWith(TEST_USER.uid, 'modulo-01', 'licao-01')
+  })
+
+  it('o corpo da lição usa a escala de leitura do controle de fonte', async () => {
+    renderLicao('/modulos/modulo-01/licoes/licao-01')
+
+    const paragraph = await screen.findByText('Conteúdo da lição')
+    expect(paragraph.closest('.reading')).not.toBeNull()
   })
 })

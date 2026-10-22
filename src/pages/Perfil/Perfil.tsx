@@ -32,7 +32,7 @@ export function Perfil() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Perfil</h1>
+        <h1 className="page-title">Perfil</h1>
       </header>
 
       <Card className="flex flex-col gap-6">
@@ -48,7 +48,7 @@ export function Perfil() {
           ) : (
             <span
               aria-hidden="true"
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 text-xl font-semibold text-primary-700"
+              className="flex h-16 w-16 items-center justify-center rounded-full border border-rule font-serif text-3xl text-ink"
             >
               {initial}
             </span>
@@ -56,15 +56,15 @@ export function Perfil() {
           <dl className="flex flex-col gap-1 text-sm">
             <div>
               <dt className="sr-only">Nome</dt>
-              <dd className="text-lg font-semibold text-slate-900">{displayName}</dd>
+              <dd className="text-lg font-semibold text-ink">{displayName}</dd>
             </div>
             <div>
               <dt className="sr-only">Email</dt>
-              <dd className="text-slate-600">
+              <dd className="text-ink-soft">
                 {userDocument?.email || user?.email || 'Indisponível'}
               </dd>
             </div>
-            <div className="flex gap-1 text-slate-500">
+            <div className="flex gap-1 text-ink-muted">
               <dt>Conta criada em</dt>
               <dd>{formatCreatedAt(userDocument?.createdAt)}</dd>
             </div>
@@ -127,7 +127,7 @@ function EditNameForm({ currentName }: { currentName: string }) {
     <form
       noValidate
       onSubmit={(event) => void handleSubmit(event)}
-      className="flex flex-col gap-3 border-t border-surface-border pt-6"
+      className="flex flex-col gap-3 border-t border-rule pt-6"
     >
       <Input
         label="Nome"
@@ -141,12 +141,12 @@ function EditNameForm({ currentName }: { currentName: string }) {
         error={fieldError}
       />
       {saveError && (
-        <p role="alert" className="text-sm text-danger-600">
+        <p role="alert" className="text-sm text-danger">
           {saveError}
         </p>
       )}
       {saved && (
-        <p role="status" className="text-sm text-success-700">
+        <p role="status" className="text-sm text-success">
           Nome atualizado.
         </p>
       )}
@@ -167,12 +167,12 @@ function QuizHistorySection() {
 
   return (
     <section aria-labelledby="quiz-history-title" className="flex flex-col gap-3">
-      <h2 id="quiz-history-title" className="text-lg font-semibold text-slate-900">
+      <h2 id="quiz-history-title" className="text-lg font-semibold text-ink">
         Histórico de quizzes
       </h2>
       {error ? (
         <Card>
-          <p className="text-sm text-slate-600">{error}</p>
+          <p className="text-sm text-ink-soft">{error}</p>
         </Card>
       ) : isLoading || !data ? (
         <div className="flex flex-col gap-2" aria-busy="true" aria-label="Carregando histórico">
@@ -182,11 +182,11 @@ function QuizHistorySection() {
         </div>
       ) : data.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-600">Você ainda não fez nenhum quiz.</p>
+          <p className="text-sm text-ink-soft">Você ainda não fez nenhum quiz.</p>
         </Card>
       ) : (
-        <table className="w-full overflow-hidden rounded-card border border-surface-border bg-surface text-left text-sm shadow-card">
-          <thead className="bg-surface-muted text-slate-600">
+        <table className="w-full overflow-hidden rounded-card border border-rule bg-surface text-left text-sm">
+          <thead className="bg-surface-muted text-ink-soft">
             <tr>
               <th scope="col" className="px-4 py-2 font-medium">
                 Módulo
@@ -199,7 +199,7 @@ function QuizHistorySection() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-surface-border">
+          <tbody className="divide-y divide-rule">
             {data.map((entry) => (
               <QuizHistoryRow key={entry.moduleId} entry={entry} />
             ))}
@@ -213,19 +213,19 @@ function QuizHistorySection() {
 function QuizHistoryRow({ entry }: { entry: QuizHistoryEntry }) {
   return (
     <tr>
-      <td className="px-4 py-3 font-medium text-slate-900">
+      <td className="px-4 py-3 font-medium text-ink">
         {entry.moduleOrder}. {entry.moduleTitle}
       </td>
       <td className="px-4 py-3">
         {entry.bestScore === null ? (
-          <span className="text-slate-500">Sem nota</span>
+          <span className="text-ink-muted">Sem nota</span>
         ) : (
           <Badge variant={entry.bestScore >= QUIZ_PASSING_SCORE ? 'success' : 'warning'}>
             {entry.bestScore}
           </Badge>
         )}
       </td>
-      <td className="px-4 py-3 text-slate-700">{entry.attempts}</td>
+      <td className="px-4 py-3 text-ink-soft">{entry.attempts}</td>
     </tr>
   )
 }

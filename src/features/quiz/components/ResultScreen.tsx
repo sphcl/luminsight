@@ -4,6 +4,7 @@ import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { getCorrectOptionIds, type QuizSummary } from '@/features/quiz/engine/scoring'
 import type { QuizOption, QuizQuestion } from '@/types/quiz.types'
 import { cn } from '@/utils/helpers/classnames'
+import { primaryLinkClass } from '@/components/ui/linkStyles'
 
 export type SaveStatus = 'saving' | 'saved' | 'error'
 
@@ -41,12 +42,14 @@ export function ResultScreen({
   return (
     <div className="flex flex-col gap-6">
       <Card className="flex flex-col items-center gap-3 text-center">
-        <p className="text-sm text-slate-500">Sua nota</p>
-        <p className="text-5xl font-extrabold text-slate-900">{summary.score}</p>
+        <p className="text-sm text-ink-muted">Sua nota</p>
+        <p className="font-serif text-7xl font-normal leading-none tracking-[-0.03em] text-ink tabular-nums">
+          {summary.score}
+        </p>
         <Badge variant={summary.passed ? 'success' : 'danger'}>
           {summary.passed ? 'Aprovado' : 'Reprovado'}
         </Badge>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-soft">
           {summary.correctAnswers} de {summary.totalQuestions} corretas em{' '}
           {formatDuration(summary.timeSpentSeconds)}.{' '}
           {summary.passed
@@ -54,9 +57,9 @@ export function ResultScreen({
             : `A nota mínima é ${QUIZ_PASSING_SCORE}. Revise as lições e tente de novo quando quiser.`}
         </p>
 
-        {saveStatus === 'saving' && <p className="text-sm text-slate-500">Salvando resultado...</p>}
+        {saveStatus === 'saving' && <p className="text-sm text-ink-muted">Salvando resultado...</p>}
         {saveStatus === 'error' && (
-          <p role="alert" className="rounded-lg bg-warning-50 p-3 text-sm text-slate-800">
+          <p role="alert" className="rounded-card bg-warning-soft p-3 text-sm text-ink">
             Não conseguimos salvar este resultado, então seu progresso pode não ter sido registrado.
             Sua nota continua aqui na tela.
           </p>
@@ -66,17 +69,14 @@ export function ResultScreen({
           <Button variant="secondary" onClick={onRetry} disabled={saveStatus === 'saving'}>
             Refazer quiz
           </Button>
-          <Link
-            to={backTo}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white hover:bg-primary-700"
-          >
+          <Link to={backTo} className={primaryLinkClass}>
             Voltar ao módulo
           </Link>
         </div>
       </Card>
 
       <section aria-labelledby="review-title" className="flex flex-col gap-3">
-        <h2 id="review-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="review-title" className="text-lg font-semibold text-ink">
           Revisão das questões
         </h2>
         <ol className="flex flex-col gap-3">
@@ -91,17 +91,17 @@ export function ResultScreen({
             return (
               <li key={question.id}>
                 <Card className="flex flex-col gap-2">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-ink">
                     {index + 1}. {question.prompt}
                   </p>
-                  <p className={cn('text-sm', isCorrect ? 'text-success-700' : 'text-danger-700')}>
+                  <p className={cn('text-sm', isCorrect ? 'text-success' : 'text-danger')}>
                     {isCorrect ? 'Acertou' : 'Errou'}: sua resposta foi "
                     {selectedText || 'sem resposta'}"
                   </p>
                   {!isCorrect && (
-                    <p className="text-sm text-slate-700">Resposta correta: "{correctText}"</p>
+                    <p className="text-sm text-ink-soft">Resposta correta: "{correctText}"</p>
                   )}
-                  <p className="text-sm leading-relaxed text-slate-600">{question.explanation}</p>
+                  <p className="text-sm leading-relaxed text-ink-soft">{question.explanation}</p>
                 </Card>
               </li>
             )

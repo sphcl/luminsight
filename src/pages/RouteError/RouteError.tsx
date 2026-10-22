@@ -1,5 +1,5 @@
 import { useNavigate, useRouteError, isRouteErrorResponse } from 'react-router-dom'
-import { Button, Card } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { ROUTES } from '@/constants/routes'
 
 // errorElement da rota raiz: pega qualquer erro não tratado que aconteça
@@ -20,14 +20,14 @@ export function RouteError() {
     : 'Ocorreu um erro inesperado.'
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
-      <Card className="max-w-md text-center">
-        <h1 className="text-2xl font-bold text-slate-900">Algo deu errado</h1>
-        <p className="mt-2 text-sm text-slate-600">{message}</p>
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-8">
+      <div className="max-w-md">
+        <h1 className="page-title">Algo deu errado</h1>
+        <p className="mt-3 text-ink-soft">{message}</p>
         <Button className="mt-6" onClick={() => navigate(ROUTES.HOME)}>
           Voltar para o início
         </Button>
-      </Card>
+      </div>
     </div>
   )
 }
