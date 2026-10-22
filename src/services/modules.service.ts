@@ -45,14 +45,3 @@ export async function getLessons(moduleId: string): Promise<LessonWithId[]> {
     return parsed ? [{ id: docSnapshot.id, ...parsed }] : []
   })
 }
-
-export async function getLessonById(
-  moduleId: string,
-  lessonId: string
-): Promise<LessonWithId | null> {
-  const snapshot = await getDoc(doc(lessonsCollection(moduleId), lessonId))
-  if (!snapshot.exists()) return null
-
-  const parsed = parseLesson(snapshot.data())
-  return parsed ? { id: snapshot.id, ...parsed } : null
-}

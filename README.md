@@ -10,7 +10,6 @@ O LumInsight é uma plataforma educacional gamificada que ensina usuários a ide
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Estilização:** Tailwind CSS
-- **Animações:** Framer Motion
 - **Estado global:** Zustand
 - **Validação:** Zod
 - **Backend/Auth/DB:** Firebase (Auth + Firestore + Hosting)

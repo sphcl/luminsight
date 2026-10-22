@@ -239,7 +239,7 @@ upgrade-insecure-requests
 - o Vite gera todo o CSS como arquivo externo em produção;
 - o build não contém nenhuma criação de elemento `<style>` (`createElement("style")`) nem uso de
   `insertRule` ou `adoptedStyleSheets`;
-- os estilos dinâmicos do React (como a largura da barra de progresso) e do Framer Motion são
+- os estilos dinâmicos do React (como a largura da barra de progresso) são
   aplicados pela API CSSOM (`elemento.style.propriedade = valor`), que a CSP não bloqueia. A CSP
   bloqueia atributos `style` escritos no HTML e elementos `<style>`, que a aplicação não usa.
 
@@ -377,7 +377,6 @@ Todas foram verificadas como em uso no código.
 | `firebase` | SDK do Firebase Auth e do Firestore. |
 | `zod` | Validação de entrada do usuário e de tudo que é lido do Firestore. |
 | `zustand` | Estado global da sessão (usuário e documento do usuário). |
-| `framer-motion` | Animações de modal e toast, respeitando a preferência de movimento reduzido. |
 | `clsx`, `tailwind-merge` | Composição de classes CSS nos componentes. |
 
 As dependências de desenvolvimento (ESLint, Vitest, Testing Library, TypeScript, Tailwind,
@@ -393,7 +392,13 @@ navegador.
   lista fechada de campos (seção 2). Guardas de rota no cliente (`src/lib/router/`) para a
   experiência do usuário, sem que a segurança dependa deles.
 - **Open redirect:** `getSafeRedirectPath` (`src/utils/security/redirect.ts`) só aceita caminhos
-  internos.
+  internos. Os testes de regressão encontraram uma variante que passava: `/\t/evil.com` (com tab,
+  quebra de linha ou retorno de carro). O navegador remove esses caracteres ao montar a URL e o
+  caminho vira `//evil.com`, que aponta para outro domínio. O React Router, ao receber uma URL de
+  outra origem, troca o `pushState` por `window.location.assign`, então a falha era explorável com
+  um link como `/login?redirect=%2F%09%2Fevil.com`. A correção recusa caracteres de controle e, como
+  última barreira, resolve a URL e exige que a origem continue a mesma. Cada variante conhecida
+  ficou numa tabela de testes em `redirect.test.ts`.
 - **Fora:** progresso declarado pelo próprio usuário (seção 4).
 
 ### A02: Falhas criptográficas

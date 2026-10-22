@@ -2,7 +2,6 @@ import {
   arrayUnion,
   collection,
   doc,
-  getDoc,
   getDocs,
   increment,
   runTransaction,
@@ -10,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { parseProgress } from '@/utils/security/firestore-validators'
-import type { ProgressDocument, ProgressMap } from '@/types/progress.types'
+import type { ProgressMap } from '@/types/progress.types'
 
 const USERS_COLLECTION = 'users'
 const PROGRESS_SUBCOLLECTION = 'progress'
@@ -32,16 +31,6 @@ export async function getUserProgress(uid: string): Promise<ProgressMap> {
   })
 
   return Object.fromEntries(entries)
-}
-
-export async function getModuleProgress(
-  uid: string,
-  moduleId: string
-): Promise<ProgressDocument | null> {
-  const snapshot = await getDoc(progressDocRef(uid, moduleId))
-  if (!snapshot.exists()) return null
-
-  return parseProgress(snapshot.data())
 }
 
 // markLessonCompleted e saveQuizAttempt rodam em transação porque a
@@ -112,11 +101,7 @@ export async function markSimulationCompleted(uid: string, moduleId: string): Pr
   })
 }
 
-export async function saveQuizAttempt(
-  uid: string,
-  moduleId: string,
-  score: number
-): Promise<void> {
+export async function saveQuizAttempt(uid: string, moduleId: string, score: number): Promise<void> {
   const ref = progressDocRef(uid, moduleId)
 
   await runTransaction(db, async (transaction) => {
