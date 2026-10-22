@@ -11,9 +11,7 @@ import type {
   NextStep,
 } from '@/features/dashboard/engine/dashboard'
 import { cn } from '@/utils/helpers/classnames'
-
-const primaryLinkClass =
-  'inline-flex h-11 items-center justify-center self-start rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white hover:bg-primary-700'
+import { primaryLinkClass, textLinkClass } from '@/components/ui/linkStyles'
 
 export function Dashboard() {
   const { user, userDocument } = useAuth()
@@ -32,10 +30,11 @@ export function Dashboard() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-10">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Olá, {displayName}</h1>
-        <p className="mt-1 text-slate-600">Aqui está o resumo do seu aprendizado.</p>
+        <p className="eyebrow">Seu painel</p>
+        <h1 className="page-title mt-2">Olá, {displayName}</h1>
+        <p className="mt-3 text-ink-soft">Aqui está o resumo do seu aprendizado.</p>
       </header>
 
       {isLoading || !data ? (
@@ -56,15 +55,18 @@ function WelcomeView({ modules }: { modules: DashboardModule[] }) {
     <>
       <Card className="flex flex-col gap-4" data-testid="dashboard-welcome">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Vamos começar?</h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <h2 className="font-serif text-3xl font-normal text-ink">Vamos começar?</h2>
+          <p className="mt-2 text-ink-soft">
             {firstModule
               ? `A trilha começa pelo módulo 1, ${firstModule.title}. Cada módulo libera o próximo quando você termina.`
               : 'Nenhum módulo publicado ainda. Volte daqui a pouco.'}
           </p>
         </div>
         {firstModule && (
-          <Link to={buildModuleRoute(firstModule.id)} className={primaryLinkClass}>
+          <Link
+            to={buildModuleRoute(firstModule.id)}
+            className={cn(primaryLinkClass, 'self-start')}
+          >
             Começar pelo módulo 1
           </Link>
         )}
@@ -94,8 +96,11 @@ function StartedView({
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="flex flex-col justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-slate-600">Progresso da trilha</p>
-            <p className="text-3xl font-bold text-slate-900" data-testid="overall-progress">
+            <p className="eyebrow">Progresso da trilha</p>
+            <p
+              className="mt-2 font-serif text-5xl font-normal tracking-[-0.02em] text-ink tabular-nums"
+              data-testid="overall-progress"
+            >
               {summary.overallProgress}%
             </p>
           </div>
@@ -104,10 +109,10 @@ function StartedView({
 
         <Card className="flex flex-col justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-slate-600">{continueCopy.eyebrow}</p>
-            <p className="font-semibold text-slate-900">{continueCopy.title}</p>
+            <p className="eyebrow">{continueCopy.eyebrow}</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{continueCopy.title}</p>
           </div>
-          <Link to={continueRoute} className={primaryLinkClass}>
+          <Link to={continueRoute} className={cn(primaryLinkClass, 'self-start')}>
             {continueCopy.action}
           </Link>
         </Card>
@@ -117,12 +122,17 @@ function StartedView({
         <h2 id="stats-title" className="sr-only">
           Resumo
         </h2>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 border-t border-rule sm:grid-cols-4">
           {stats.map((stat) => (
-            <Card key={stat.label} className="flex flex-col-reverse gap-1">
-              <dt className="text-sm text-slate-600">{stat.label}</dt>
-              <dd className="text-2xl font-bold text-slate-900">{stat.value}</dd>
-            </Card>
+            <div
+              key={stat.label}
+              className="flex flex-col-reverse gap-1 border-b border-rule py-4 pr-4 sm:border-b-0"
+            >
+              <dt className="text-sm text-ink-soft">{stat.label}</dt>
+              <dd className="font-serif text-4xl font-normal text-ink tabular-nums">
+                {stat.value}
+              </dd>
+            </div>
           ))}
         </dl>
       </section>
@@ -175,26 +185,29 @@ function ModuleList({ modules }: { modules: DashboardModule[] }) {
   return (
     <section aria-labelledby="modules-title" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 id="modules-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="modules-title" className="text-lg font-semibold text-ink">
           Módulos
         </h2>
-        <Link to={ROUTES.TRILHA} className="text-sm font-medium text-primary-700 hover:underline">
+        <Link to={ROUTES.TRILHA} className={textLinkClass}>
           Ver trilha
         </Link>
       </div>
-      <ol className="flex flex-col divide-y divide-surface-border rounded-card border border-surface-border bg-surface shadow-card">
+      <ol className="flex flex-col divide-y divide-rule border-y border-rule">
         {modules.map(({ module, status }) => {
           const badge = getStatusBadge(status)
           const isLocked = status === 'locked'
           const content = (
             <>
               <span
-                className={cn(
-                  'flex-1 text-sm font-medium',
-                  isLocked ? 'text-slate-500' : 'text-slate-900'
-                )}
+                aria-hidden="true"
+                className="w-10 shrink-0 font-serif text-2xl leading-none text-ink-muted tabular-nums"
               >
-                {module.order}. {module.title}
+                {String(module.order).padStart(2, '0')}
+              </span>
+              <span
+                className={cn('flex-1 font-serif text-lg', isLocked ? 'text-ink-soft' : 'text-ink')}
+              >
+                <span className="sr-only">{module.order}.</span> {module.title}
               </span>
               <Badge variant={badge.variant}>{badge.label}</Badge>
             </>
@@ -203,13 +216,13 @@ function ModuleList({ modules }: { modules: DashboardModule[] }) {
           return (
             <li key={module.id} data-testid={`dashboard-module-${module.id}`}>
               {isLocked ? (
-                <div aria-disabled="true" className="flex items-center gap-3 px-4 py-3">
+                <div aria-disabled="true" className="flex min-h-14 items-center gap-3 py-3">
                   {content}
                 </div>
               ) : (
                 <Link
                   to={buildModuleRoute(module.id)}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-muted"
+                  className="flex min-h-14 items-center gap-3 py-3 transition-colors hover:bg-surface-muted motion-reduce:transition-none"
                 >
                   {content}
                 </Link>

@@ -98,7 +98,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       />
 
       {error && (
-        <p role="alert" className="text-sm text-danger-600">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}

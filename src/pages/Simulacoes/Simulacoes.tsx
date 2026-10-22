@@ -29,8 +29,8 @@ export function Simulacoes() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Simulações</h1>
-        <p className="mt-1 text-slate-600">
+        <h1 className="page-title">Simulações</h1>
+        <p className="mt-1 text-ink-soft">
           Cenários de golpe com contatos fictícios para treinar o que você aprendeu. Cada simulação
           libera junto com o módulo dela.
         </p>
@@ -41,7 +41,7 @@ export function Simulacoes() {
           {Array.from({ length: SKELETON_CARDS }, (_, index) => (
             <li key={index}>
               <Card className="flex flex-col gap-3">
-                <Skeleton className="h-5 w-32 rounded-full" />
+                <Skeleton className="h-5 w-32 rounded-sm" />
                 <Skeleton className="h-6 w-2/3" />
                 <Skeleton className="h-4 w-full" />
               </Card>
@@ -50,7 +50,7 @@ export function Simulacoes() {
         </ol>
       ) : data.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-600">Nenhuma simulação publicada ainda.</p>
+          <p className="text-sm text-ink-soft">Nenhuma simulação publicada ainda.</p>
         </Card>
       ) : (
         <ol className="flex flex-col gap-4">
@@ -82,10 +82,10 @@ function SimulationCard({ item }: { item: SimulationWithStatus }) {
         <Badge>{formatMinutes(simulation.estimatedMinutes)}</Badge>
       </div>
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">{simulation.title}</h2>
-        <p className="mt-1 text-sm text-slate-600">{simulation.description}</p>
+        <h2 className="font-serif text-2xl font-normal text-ink">{simulation.title}</h2>
+        <p className="mt-1 text-sm text-ink-soft">{simulation.description}</p>
       </div>
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-muted">
         {isLocked
           ? `Libera quando o módulo "${module.title}" for desbloqueado.`
           : `Módulo: ${module.title}`}
@@ -105,7 +105,7 @@ function SimulationCard({ item }: { item: SimulationWithStatus }) {
     <Link
       to={buildSimulationRoute(simulation.id)}
       data-testid={`simulation-card-${simulation.id}`}
-      className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+      className="block rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {content}
     </Link>

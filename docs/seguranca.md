@@ -248,6 +248,11 @@ mesmo raciocínio vale para `script-src`: não há `'unsafe-inline'` nem `'unsaf
 
 **O que ficou de fora.**
 
+- O site é publicado em `https://luminsight-8a8dc.web.app`, sem domínio próprio, por decisão do
+  projeto de custar zero. Esse endereço está escrito nas tags `og:url`, `og:image` e
+  `twitter:image` do `index.html`, porque o preview de link exige URL absoluta. Se um dia o projeto
+  ganhar domínio próprio, essas tags precisam mudar junto, ou o preview quebra sem nenhum erro
+  visível.
 - O domínio de autenticação está escrito na política (`luminsight-8a8dc.firebaseapp.com`). Se o
   projeto Firebase mudar, a CSP precisa ser atualizada junto.
 - O SDK do Firebase Auth também contém referências a `www.google.com/recaptcha`. Elas só são usadas
@@ -319,7 +324,7 @@ Foi feita uma varredura no código-fonte (`src/`, `scripts/` e `index.html`) e n
 | `dangerouslySetInnerHTML` | Nenhum uso. Todo texto é renderizado pelo React, que escapa HTML. |
 | `eval`, `new Function`, `setTimeout` com string | Nenhum uso. O ESLint tem a regra `security/detect-eval-with-expression` como erro. |
 | `console.log` fora de guarda de DEV | Nenhum em `src/`. Os `console.error` e `console.warn` existentes ficam dentro de `if (import.meta.env.DEV)`, então não aparecem em produção. O ESLint barra `console.log` (`no-console`). Os scripts de linha de comando em `scripts/` usam `console.log` porque essa é a interface deles. |
-| Dados sensíveis em `localStorage` ou `sessionStorage` | O código do projeto não usa nenhum dos dois. O SDK do Firebase Auth guarda o token de sessão no IndexedDB do navegador, que é o comportamento padrão dele. Esse token fica acessível a um script que conseguisse rodar na página, e é por isso que a CSP (seção 3.1) é a defesa principal contra roubo de sessão. |
+| Dados sensíveis em `localStorage` ou `sessionStorage` | Nenhum dado sensível. A única exceção é a preferência de interface (seção 5.2). Fora ela, o código do projeto não usa nenhum dos dois. O SDK do Firebase Auth guarda o token de sessão no IndexedDB do navegador, que é o comportamento padrão dele. Esse token fica acessível a um script que conseguisse rodar na página, e é por isso que a CSP (seção 3.1) é a defesa principal contra roubo de sessão. |
 | Erro do Firebase vazando código interno | Nenhum. Todo erro passa por `mapAuthError` ou `mapFirestoreError` (`src/utils/security/errors.ts`), que devolvem mensagens genéricas. Os erros de credencial ("usuário não existe" e "senha errada") devolvem a mesma mensagem, para não permitir descobrir quais emails têm conta. |
 | Link externo sem `rel="noopener noreferrer"` | Os únicos links externos são os blocos de vídeo e de link das lições (seção 5.1), que usam `target="_blank"` com `rel="noopener noreferrer"`. O outro `<a href>` literal é o link de pular para o conteúdo, interno à página. As fotos do Google são carregadas com `referrerPolicy="no-referrer"`. |
 | Entrada de usuário sem validação Zod | Login, cadastro, onboarding e edição de nome usam Zod. Quiz e simulações usam apenas opções predefinidas, e o quiz é recorrigido pelo gabarito em vez de confiar no que veio da tela. O parâmetro `redirect` da URL passa por `getSafeRedirectPath` (proteção contra open redirect). **Corrigido nesta fase:** os parâmetros de rota (`moduleId`, `lessonId`, `simulationId`) iam direto para os caminhos do Firestore. Agora passam por `parseRouteId` (`src/utils/security/route-params.ts`), que só aceita o formato dos ids de conteúdo. |
@@ -351,6 +356,32 @@ fictícios (`.example`) vale para cenários que simulam golpe, não para referê
 
 O custo é de usabilidade: o usuário sai da plataforma para assistir. Para um projeto de Segurança da
 Informação essa troca é intencional, e a lição avisa que o link abre fora do LumInsight.
+
+### 5.2 Exceção: preferência de tema e de tamanho de fonte no `localStorage`
+
+A regra do projeto é não gravar nada no armazenamento do navegador, porque ele é legível por
+qualquer script que rode na página. A regra existe para proteger token e dado pessoal. Ela abre
+uma exceção para duas chaves de preferência de interface:
+
+| Chave | Valores aceitos | Por que não é sensível |
+| --- | --- | --- |
+| `luminsight:theme` | `light` ou `dark` | Não identifica a pessoa, não tem relação com sessão nem com conta. |
+| `luminsight:font-size` | `md`, `lg` ou `xl` | Idem. |
+
+O motivo de usar o `localStorage` e não o documento do usuário no Firestore é técnico: o tema
+precisa ser aplicado antes da primeira pintura da página, senão ela pisca no tema errado. Nesse
+momento o React ainda não carregou e não existe sessão do Firebase, então o Firestore não chegaria a
+tempo nem para quem está logado, e não existiria nas páginas públicas.
+
+Os valores são tratados como entrada não confiável. Tanto o script que roda antes da pintura
+(`public/theme-init.js`) quanto o código da aplicação (`src/features/preferences/preferences.ts`)
+só aceitam os valores da tabela, e qualquer outro conteúdo é ignorado. Os acessos ficam dentro de
+`try/catch`, então navegação privada ou armazenamento bloqueado não quebram a página. Há testes
+para valor fora do enum, para o padrão do sistema e para a escolha manual.
+
+O script de início é um arquivo servido pelo próprio domínio, e não um bloco inline. Assim a CSP
+não precisa de `'unsafe-inline'` nem de hash: um hash teria de ser recalculado a cada alteração do
+script e falharia em silêncio se alguém esquecesse.
 
 ## 6. Dependências
 
@@ -483,7 +514,91 @@ navegador.
 - **Não se aplica:** o projeto não tem servidor próprio que faça requisições a partir de dados do
   usuário.
 
-## 8. Resumo do que ficou de fora
+## 8. Acessibilidade
+
+O público do LumInsight inclui pessoas idosas, que são as que mais sofrem golpe: segundo a Fundação
+Seade, citada na lição 3.2, 82% dos idosos do estado de São Paulo já foram alvo de tentativas. Uma página que essa pessoa não consegue ler, ou que só funciona com mouse, falha justamente
+com quem mais precisa dela. Por isso a acessibilidade foi tratada como requisito, com verificação
+automatizada sempre que possível.
+
+### 8.1 Contraste medido
+
+Todos os valores abaixo foram calculados com a fórmula de luminância relativa da WCAG 2.1, a partir
+das cores definidas em `src/index.css`, e não estimados a olho. O mínimo AA é 4,5:1 para texto
+normal e 3:1 para contorno de componente interativo (critério 1.4.11).
+
+| Par | Uso | Claro | Escuro | Mínimo |
+| --- | --- | --- | --- | --- |
+| Texto principal | texto | 18.88:1 | 17.83:1 | 4.5:1 |
+| Texto principal em card | texto | 18.88:1 | 16.44:1 | 4.5:1 |
+| Texto secundário | texto | 8.86:1 | 13.11:1 | 4.5:1 |
+| Texto secundário em fundo tonal | texto | 8.37:1 | 12.09:1 | 4.5:1 |
+| Texto discreto (legendas, rótulos de 11px) | texto | 5.33:1 | 7.70:1 | 4.5:1 |
+| Texto discreto em fundo tonal | texto | 5.03:1 | 7.11:1 | 4.5:1 |
+| Link e acento | texto | 8.87:1 | 7.30:1 | 4.5:1 |
+| Link em card | texto | 8.87:1 | 6.73:1 | 4.5:1 |
+| Link em hover | texto | 12.21:1 | 9.62:1 | 4.5:1 |
+| Texto do botão primário | texto | 8.87:1 | 7.30:1 | 4.5:1 |
+| Texto do botão primário em hover | texto | 12.21:1 | 9.62:1 | 4.5:1 |
+| Acento sobre fundo de acento suave | texto | 8.37:1 | 6.27:1 | 4.5:1 |
+| Sucesso sobre fundo de sucesso | texto | 5.69:1 | 8.18:1 | 4.5:1 |
+| Erro sobre fundo de erro | texto | 6.05:1 | 5.87:1 | 4.5:1 |
+| Aviso sobre fundo de aviso | texto | 6.05:1 | 7.36:1 | 4.5:1 |
+| Texto principal sobre fundo de erro | texto | 17.37:1 | 14.93:1 | 4.5:1 |
+| Texto do botão de perigo | texto | 6.57:1 | 7.00:1 | 4.5:1 |
+| Contorno de campo (border-control) | contorno | 3.36:1 | 3.65:1 | 3:1 |
+| Contorno de campo em card | contorno | 3.36:1 | 3.36:1 | 3:1 |
+| Anel de foco contra o fundo | contorno | 8.87:1 | 7.30:1 | 3:1 |
+| Régua decorativa (rule), não é contorno de controle | decorativo | 1.26:1 | 1.43:1 | não se aplica |
+| Régua forte (border-strong) do botão secundário | contorno | 18.88:1 | 17.83:1 | 3:1 |
+
+| Faixa e selos de simulação (cores fixas nos dois temas) | Contraste | Mínimo |
+| --- | --- | --- |
+| Texto da faixa de aviso | 16.03:1 | 4.5:1 |
+| Selo "Simulação" da faixa | 7.09:1 | 4.5:1 |
+| Selo "Ligação simulada" | 10.69:1 | 4.5:1 |
+| Contorno dos botões de decisão (claro) | 4.76:1 | 3:1 |
+| Contorno das respostas rápidas do chat | 4.47:1 | 3:1 |
+| Contorno dos botões de decisão da ligação | 3.07:1 | 3:1 |
+
+| Par que precisa ser distinguido | Claro | Escuro |
+| --- | --- | --- |
+| Sucesso contra erro (diferença de luminosidade) | 1.02:1 | 1.48:1 |
+| Opção selecionada (régua de acento) contra régua neutra | 7.04:1 | 5.10:1 |
+
+Dois pontos dessa tabela exigiram decisão:
+
+- **Contorno de campo.** A régua decorativa (`#E5E5E5` no claro) tem 1,26:1 contra o fundo, o que é
+  correto para separar seções, mas reprova como contorno de campo de texto ou checkbox. Por isso o
+  tema tem dois tokens distintos no código: `rule`, para régua decorativa, e `control`, para
+  contorno de componente interativo, com 3,36:1 no claro e 3,65:1 no escuro.
+- **Botão primário no escuro.** Branco sobre o acento escuro (`#8A96FF`) dá 2,66:1 e reprova. O texto
+  do botão no tema escuro é quase preto (`#0D0D0D`), com 7,30:1.
+
+**Cor nunca é o único sinal.** No tema claro, sucesso (`#146C43`) e erro (`#B42318`) têm praticamente
+a mesma luminosidade (1,02:1 entre si). Quem não distingue verde de vermelho não os separa pela cor.
+Por isso todo acerto e todo erro também aparecem em texto ("Correta", "Sua resposta", "Acertou",
+"Errou", "Você acertou!", "Não foi dessa vez."), seguindo o critério 1.4.1 da WCAG. A opção
+selecionada no quiz e no onboarding é marcada por uma régua de 3px à esquerda, que contrasta 7,04:1
+com a régua neutra no claro e 5,10:1 no escuro, além do próprio controle marcado.
+
+### 8.2 Outras medidas
+
+- **Alvo de toque de 44px** em botões, links de navegação, controles do header (tema, tamanho de
+  fonte, menu) e botões de decisão das simulações. Testado no componente `Button`.
+- **Foco visível** em todo elemento interativo: anel de 2px no acento com folga no fundo, com 8,87:1
+  no claro e 7,30:1 no escuro.
+- **Tamanho de fonte** com três níveis (100%, 115% e 130%) no header, que escala a fonte raiz do
+  site inteiro. Como os tamanhos usam unidades relativas (`rem` e `em`), texto, espaçamento e alvos
+  de toque crescem juntos. A conferência visual do layout nos três níveis é feita no navegador.
+- **Navegação completa por teclado.** Há testes que concluem uma lição e um quiz inteiro só com Tab,
+  Espaço e Enter, conferindo a ordem do foco e que o foco não se perde ao confirmar uma resposta.
+- **Ícones sozinhos** têm `aria-label` que descreve a ação (o botão de tema diz para qual tema vai,
+  e não em qual está), e todo SVG decorativo tem `aria-hidden`.
+- **Movimento reduzido.** Animações de entrada, a troca de tema e a régua de conclusão de módulo não
+  acontecem quando o sistema pede menos movimento (`prefers-reduced-motion`).
+
+## 9. Resumo do que ficou de fora
 
 | Item | Motivo | Caminho para resolver |
 | --- | --- | --- |

@@ -7,10 +7,12 @@ export function Register() {
   const redirectTarget = useRedirectTarget()
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Criar conta</h1>
-        <p className="text-sm text-slate-500">Comece sua trilha de aprendizado em minutos.</p>
+        <h1 className="font-serif text-4xl font-normal tracking-[-0.025em] text-ink">
+          Criar conta
+        </h1>
+        <p className="mt-2 text-ink-soft">Comece sua trilha de aprendizado em minutos.</p>
       </div>
 
       {/* Conta nova sempre cai em /onboarding via ProtectedRoute (onboardingCompleted

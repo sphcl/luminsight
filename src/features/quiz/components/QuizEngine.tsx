@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Button, Card } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { getCorrectOptionIds, type QuizSummary } from '@/features/quiz/engine/scoring'
 import { useQuiz } from '@/features/quiz/hooks/useQuiz'
 import { toPublicQuestion } from '@/features/quiz/types/public-question'
@@ -33,7 +33,7 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
     .join(' / ')
 
   return (
-    <Card className="flex flex-col gap-6">
+    <section aria-label="Quiz" className="flex flex-col gap-8">
       <QuizProgress questionNumber={quiz.questionNumber} totalQuestions={quiz.totalQuestions} />
 
       <QuestionCard
@@ -65,6 +65,6 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
           </Button>
         )}
       </div>
-    </Card>
+    </section>
   )
 }

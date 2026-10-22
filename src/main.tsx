@@ -7,9 +7,7 @@ import { AuthProvider } from '@/features/auth'
 const rootElement = document.getElementById('root')
 
 if (!rootElement) {
-  throw new Error(
-    'Elemento #root não encontrado no DOM. Verifique o arquivo index.html.'
-  )
+  throw new Error('Elemento #root não encontrado no DOM. Verifique o arquivo index.html.')
 }
 
 createRoot(rootElement).render(

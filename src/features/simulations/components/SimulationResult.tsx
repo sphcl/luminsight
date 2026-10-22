@@ -6,6 +6,7 @@ import type { ContentBlock } from '@/types/module.types'
 import type { SimulationScene } from '@/types/simulation.types'
 import { cn } from '@/utils/helpers/classnames'
 import { SimulationIndicator } from './SimulationIndicator'
+import { primaryLinkClass } from '@/components/ui/linkStyles'
 
 export type SaveStatus = 'saving' | 'saved' | 'error'
 
@@ -36,22 +37,22 @@ export function SimulationResult({
   return (
     <div className="flex flex-col gap-6">
       <Card className="flex flex-col items-center gap-3 text-center">
-        <p className="text-sm text-slate-500">Simulação concluída</p>
-        <p className="text-5xl font-extrabold text-slate-900">
+        <p className="text-sm text-ink-muted">Simulação concluída</p>
+        <p className="font-serif text-7xl font-normal leading-none tracking-[-0.03em] text-ink tabular-nums">
           {summary.correctDecisions}/{summary.totalDecisions}
         </p>
         <Badge variant={summary.isPerfect ? 'success' : 'warning'}>
           {summary.isPerfect ? 'Nenhum erro' : 'Vale revisar'}
         </Badge>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-soft">
           {summary.isPerfect
             ? 'Você identificou todos os sinais do golpe.'
             : 'Confira abaixo os sinais que passaram despercebidos.'}
         </p>
 
-        {saveStatus === 'saving' && <p className="text-sm text-slate-500">Salvando progresso...</p>}
+        {saveStatus === 'saving' && <p className="text-sm text-ink-muted">Salvando progresso...</p>}
         {saveStatus === 'error' && (
-          <p role="alert" className="rounded-lg bg-warning-50 p-3 text-sm text-slate-800">
+          <p role="alert" className="rounded-card bg-warning-soft p-3 text-sm text-ink">
             Não conseguimos salvar a conclusão, então seu progresso pode não ter sido registrado.
           </p>
         )}
@@ -60,10 +61,7 @@ export function SimulationResult({
           <Button variant="secondary" onClick={onRetry} disabled={saveStatus === 'saving'}>
             Refazer simulação
           </Button>
-          <Link
-            to={backTo}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white hover:bg-primary-700"
-          >
+          <Link to={backTo} className={primaryLinkClass}>
             Voltar às simulações
           </Link>
         </div>
@@ -71,7 +69,7 @@ export function SimulationResult({
 
       {conclusion && conclusion.length > 0 && (
         <Card className="flex flex-col gap-3" aria-labelledby="conclusion-title">
-          <h2 id="conclusion-title" className="text-lg font-semibold text-slate-900">
+          <h2 id="conclusion-title" className="text-lg font-semibold text-ink">
             O que esse golpe tinha
           </h2>
           {conclusion.map((block, index) => (
@@ -81,7 +79,7 @@ export function SimulationResult({
       )}
 
       <section aria-labelledby="decisions-review-title" className="flex flex-col gap-3">
-        <h2 id="decisions-review-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="decisions-review-title" className="text-lg font-semibold text-ink">
           Revisão das decisões
         </h2>
         <ol className="flex flex-col gap-3">
@@ -96,21 +94,21 @@ export function SimulationResult({
             return (
               <li key={scene.id}>
                 <Card className="flex flex-col gap-2">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-ink">
                     {index + 1}. {scene.decision.prompt}
                   </p>
-                  <p className={cn('text-sm', isCorrect ? 'text-success-700' : 'text-danger-700')}>
+                  <p className={cn('text-sm', isCorrect ? 'text-success' : 'text-danger')}>
                     {isCorrect ? 'Acertou' : 'Errou'}: você escolheu "
                     {selected?.text ?? 'sem resposta'}"
                   </p>
                   {!isCorrect && correct && (
-                    <p className="text-sm text-slate-700">Melhor escolha: "{correct.text}"</p>
+                    <p className="text-sm text-ink-soft">Melhor escolha: "{correct.text}"</p>
                   )}
                   {selected && (
-                    <p className="text-sm leading-relaxed text-slate-600">{selected.feedback}</p>
+                    <p className="text-sm leading-relaxed text-ink-soft">{selected.feedback}</p>
                   )}
                   {!isCorrect && correct && (
-                    <p className="text-sm leading-relaxed text-slate-600">{correct.feedback}</p>
+                    <p className="text-sm leading-relaxed text-ink-soft">{correct.feedback}</p>
                   )}
                 </Card>
               </li>

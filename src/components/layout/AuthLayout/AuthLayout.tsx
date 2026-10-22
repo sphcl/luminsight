@@ -1,17 +1,16 @@
 import { Outlet } from 'react-router-dom'
+import { Header } from '../Header/Header'
 
-// Layout minimalista e centralizado para Login, Register e Onboarding:
-// logo no topo, conteúdo da rota atual centralizado embaixo.
+// Login, cadastro e onboarding: mesmo header do resto do site e o formulário centralizado embaixo.
 export function AuthLayout() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-muted p-6">
-      <div className="mb-8 flex flex-col items-center gap-1">
-        <span className="text-2xl font-extrabold text-slate-900">LumInsight</span>
-        <p className="text-sm text-slate-500">Educação em segurança digital</p>
-      </div>
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <Header />
 
-      <div className="w-full max-w-md">
-        <Outlet />
+      <div className="flex flex-1 flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <Outlet />
+        </div>
       </div>
     </div>
   )

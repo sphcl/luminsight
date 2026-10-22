@@ -4,9 +4,10 @@ export function SimulationIndicator() {
     <div
       role="note"
       aria-label="Aviso de simulação"
-      className="fixed inset-x-0 bottom-0 z-40 flex min-h-12 items-center justify-center gap-2 border-t-2 border-warning-500 bg-warning-100 px-4 py-2 text-center text-sm text-slate-900"
+      // Cores fixas de propósito: a faixa tem que ser igual e inequívoca em qualquer tema (contraste em docs/seguranca.md).
+      className="fixed inset-x-0 bottom-0 z-40 flex min-h-12 items-center justify-center gap-2 border-t-2 border-amber-600 bg-amber-100 px-4 py-2 text-center text-sm text-slate-900"
     >
-      <span className="rounded bg-warning-500 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">
+      <span className="bg-amber-800 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">
         Simulação
       </span>
       <span>

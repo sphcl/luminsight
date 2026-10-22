@@ -15,6 +15,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
 import { OnboardingRoute } from './OnboardingRoute'
 import { RouteLoadingFallback } from './RouteLoadingFallback'
+import { RouteTitle } from './documentTitle'
 
 // Landing, Login e Register carregam sempre, sem code-splitting: são a
 // primeira impressão do site (ou o que aparece assim que alguém tenta abrir
@@ -61,6 +62,7 @@ export const routes: RouteObject[] = [
     // qualquer página abaixo (RouteError fica de fora do lazy loading —
     // ver comentário no próprio arquivo). Sem element, o React Router
     // renderiza um <Outlet /> implícito para os filhos.
+    element: <RouteTitle />,
     errorElement: <RouteError />,
     children: [
       { path: ROUTES.HOME, element: <Landing /> },
@@ -71,8 +73,8 @@ export const routes: RouteObject[] = [
           {
             element: <AuthLayout />,
             children: [
-              { path: ROUTES.LOGIN, element: <Login /> },
-              { path: ROUTES.REGISTER, element: <Register /> },
+              { path: ROUTES.LOGIN, handle: { title: 'Entrar' }, element: <Login /> },
+              { path: ROUTES.REGISTER, handle: { title: 'Criar conta' }, element: <Register /> },
             ],
           },
         ],
@@ -83,7 +85,13 @@ export const routes: RouteObject[] = [
         children: [
           {
             element: <AuthLayout />,
-            children: [{ path: ROUTES.ONBOARDING, element: withSuspense(<Onboarding />) }],
+            children: [
+              {
+                path: ROUTES.ONBOARDING,
+                handle: { title: 'Vamos te conhecer' },
+                element: withSuspense(<Onboarding />),
+              },
+            ],
           },
         ],
       },
@@ -94,21 +102,53 @@ export const routes: RouteObject[] = [
           {
             element: <AppLayout />,
             children: [
-              { path: ROUTES.DASHBOARD, element: withSuspense(<Dashboard />) },
-              { path: ROUTES.TRILHA, element: withSuspense(<Trilha />) },
-              { path: ROUTES.MODULO, element: withSuspense(<Modulo />) },
-              { path: ROUTES.LICAO, element: withSuspense(<Licao />) },
-              { path: ROUTES.QUIZ, element: withSuspense(<Quiz />) },
-              { path: ROUTES.SIMULACOES, element: withSuspense(<Simulacoes />) },
-              { path: ROUTES.SIMULACAO, element: withSuspense(<Simulacao />) },
-              { path: ROUTES.PERFIL, element: withSuspense(<Perfil />) },
+              {
+                path: ROUTES.DASHBOARD,
+                handle: { title: 'Dashboard' },
+                element: withSuspense(<Dashboard />),
+              },
+              {
+                path: ROUTES.TRILHA,
+                handle: { title: 'Trilha' },
+                element: withSuspense(<Trilha />),
+              },
+              {
+                path: ROUTES.MODULO,
+                handle: { title: 'Módulo' },
+                element: withSuspense(<Modulo />),
+              },
+              { path: ROUTES.LICAO, handle: { title: 'Lição' }, element: withSuspense(<Licao />) },
+              { path: ROUTES.QUIZ, handle: { title: 'Quiz' }, element: withSuspense(<Quiz />) },
+              {
+                path: ROUTES.SIMULACOES,
+                handle: { title: 'Simulações' },
+                element: withSuspense(<Simulacoes />),
+              },
+              {
+                path: ROUTES.SIMULACAO,
+                handle: { title: 'Simulação' },
+                element: withSuspense(<Simulacao />),
+              },
+              {
+                path: ROUTES.PERFIL,
+                handle: { title: 'Perfil' },
+                element: withSuspense(<Perfil />),
+              },
             ],
           },
         ],
       },
 
-      { path: ROUTES.FORBIDDEN, element: withSuspense(<Forbidden />) },
-      { path: '*', element: withSuspense(<NotFound />) },
+      {
+        path: ROUTES.FORBIDDEN,
+        handle: { title: 'Acesso não permitido' },
+        element: withSuspense(<Forbidden />),
+      },
+      {
+        path: '*',
+        handle: { title: 'Página não encontrada' },
+        element: withSuspense(<NotFound />),
+      },
     ],
   },
 ]

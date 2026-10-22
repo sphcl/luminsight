@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Skeleton } from '@/components/ui'
+import { secondaryLinkClass, textLinkClass } from '@/components/ui/linkStyles'
 import { ROUTES, buildLessonRoute, buildModuleRoute } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import { ContentBlockRenderer } from '@/features/modules/components/ContentBlockRenderer'
@@ -11,10 +12,8 @@ import { formatMinutes } from '@/features/modules/labels'
 import { markLessonCompleted } from '@/services/progress.service'
 import { mapFirestoreError } from '@/utils/security/errors'
 import type { LessonWithId, ModuleWithId } from '@/types/module.types'
+import { useDocumentTitle } from '@/lib/router/useDocumentTitle'
 import { parseRouteId } from '@/utils/security/route-params'
-
-const secondaryLinkClass =
-  'inline-flex h-11 items-center justify-center rounded-lg border border-surface-border bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-surface-muted'
 
 export function Licao() {
   const params = useParams<{ moduleId: string; lessonId: string }>()
@@ -102,6 +101,7 @@ function LessonView({
   onCompleted,
 }: LessonViewProps) {
   const navigate = useNavigate()
+  useDocumentTitle(lesson.title)
   const previousLesson = lessonIndex > 0 ? lessons[lessonIndex - 1] : undefined
   const nextLesson = lessons[lessonIndex + 1]
   const remainingSeconds = useReadingTimer(lesson.readingTimeSeconds)
@@ -139,36 +139,34 @@ function LessonView({
   }
 
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-6">
+    // O LessonView é remontado a cada lição (key no pai), então a entrada anima na troca de lição.
+    <article className="mx-auto flex max-w-2xl flex-col gap-10 motion-safe:animate-enter">
       <header>
-        <Link
-          to={buildModuleRoute(module.id)}
-          className="text-sm font-medium text-primary-700 hover:underline"
-        >
+        <Link to={buildModuleRoute(module.id)} className={textLinkClass}>
           {module.title}
         </Link>
-        <p className="mt-3 text-sm text-slate-500">
+        <p className="eyebrow mt-4">
           Lição {lessonIndex + 1} de {lessons.length} · {formatMinutes(lesson.estimatedMinutes)}
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">{lesson.title}</h1>
+        <h1 className="page-title mt-2">{lesson.title}</h1>
       </header>
 
-      <Card className="flex flex-col gap-5">
+      <div className="reading flex flex-col gap-6">
         {lesson.content.map((block, index) => (
           <ContentBlockRenderer key={index} block={block} />
         ))}
-      </Card>
+      </div>
 
-      <footer className="flex flex-col gap-3">
+      <footer className="flex flex-col gap-3 border-t border-rule pt-6">
         {!canContinue && (
-          <p id="reading-timer" className="text-sm text-slate-600">
+          <p id="reading-timer" className="text-sm text-ink-soft">
             Sem pressa: aproveite a leitura. O botão de concluir libera em{' '}
             <span className="font-semibold tabular-nums">{formatCountdown(remainingSeconds)}</span>.
           </p>
         )}
 
         {saveError && (
-          <p role="alert" className="text-sm text-danger-700">
+          <p role="alert" className="text-sm text-danger">
             {saveError}
           </p>
         )}

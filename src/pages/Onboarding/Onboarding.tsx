@@ -46,7 +46,7 @@ const STEPS: [AnyStep, ...AnyStep[]] = [
 const EMPTY_ANSWERS: Answers = { securityKnowledge: null, scamExperience: null, motivation: null }
 
 const optionClass =
-  'flex cursor-pointer items-center gap-3 rounded-lg border border-surface-border bg-white p-3 text-sm text-slate-700 transition-colors hover:bg-surface-muted has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500'
+  'flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-[3px] border-b-rule border-l-transparent py-3 pl-4 pr-3 text-ink transition-colors hover:bg-surface-muted motion-reduce:transition-none has-[:checked]:border-l-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent'
 
 export function Onboarding() {
   const { user, userDocument } = useAuth()
@@ -90,8 +90,8 @@ export function Onboarding() {
   return (
     <Card className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-bold text-slate-900">Vamos te conhecer</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="page-title">Vamos te conhecer</h1>
+        <p className="text-sm text-ink-soft">
           Três perguntas rápidas pra gente entender seu ponto de partida.
         </p>
         <ProgressBar
@@ -102,7 +102,7 @@ export function Onboarding() {
       </div>
 
       <fieldset key={step.field} className="flex flex-col gap-2">
-        <legend className="mb-3 font-semibold text-slate-900">{step.question}</legend>
+        <legend className="mb-3 font-semibold text-ink">{step.question}</legend>
         {step.options.map((option) => (
           <label key={option.value} className={optionClass}>
             <input
@@ -111,7 +111,7 @@ export function Onboarding() {
               value={option.value}
               checked={currentAnswer === option.value}
               onChange={() => setAnswers((current) => ({ ...current, [step.field]: option.value }))}
-              className="accent-primary-600"
+              className="accent-accent"
             />
             {option.label}
           </label>
@@ -119,7 +119,7 @@ export function Onboarding() {
       </fieldset>
 
       {error && (
-        <p role="alert" className="text-sm text-danger-700">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}

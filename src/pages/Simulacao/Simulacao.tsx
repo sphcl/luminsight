@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Badge, Button, Card, Skeleton } from '@/components/ui'
+import { textLinkClass } from '@/components/ui/linkStyles'
+import { cn } from '@/utils/helpers/classnames'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
+import { ModuleCompleteNotice } from '@/features/modules/components/ModuleCompleteNotice'
 import { isModuleComplete } from '@/features/modules/engine/trail'
 import { formatMinutes } from '@/features/modules/labels'
 import { SimulationEngine } from '@/features/simulations/components/SimulationEngine'
@@ -25,6 +28,7 @@ import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
 import type { SimulationDocument } from '@/types/simulation.types'
+import { useDocumentTitle } from '@/lib/router/useDocumentTitle'
 import { parseRouteId } from '@/utils/security/route-params'
 
 export function Simulacao() {
@@ -92,6 +96,7 @@ function SimulationSession({
   module,
   progress,
 }: SimulationSessionProps) {
+  useDocumentTitle(rawSimulation.title)
   // Memo pra engine não receber cenas novas a cada render e reiniciar o timer das mensagens.
   const simulation = useMemo(
     () => personalizeSimulation(rawSimulation, recipientName),
@@ -102,6 +107,7 @@ function SimulationSession({
   const [summary, setSummary] = useState<SimulationSummary | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saving')
   const [isModuleMarked, setIsModuleMarked] = useState((progress?.completedAt ?? null) !== null)
+  const [justCompletedModule, setJustCompletedModule] = useState(false)
 
   async function persistCompletion() {
     setSaveStatus('saving')
@@ -114,6 +120,7 @@ function SimulationSession({
         if (isModuleComplete(module, nextProgress)) {
           await markModuleCompleted(uid, module.id)
           setIsModuleMarked(true)
+          setJustCompletedModule(true)
         }
       }
 
@@ -132,13 +139,14 @@ function SimulationSession({
 
   function handleRetry() {
     setSummary(null)
+    setJustCompletedModule(false)
     setAttempt((current) => current + 1)
     setPhase('running')
   }
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 pb-16">
-      <Link to={ROUTES.SIMULACOES} className="text-sm font-medium text-primary-700 hover:underline">
+      <Link to={ROUTES.SIMULACOES} className={cn(textLinkClass, 'self-start')}>
         Voltar às simulações
       </Link>
 
@@ -152,6 +160,10 @@ function SimulationSession({
 
       {phase === 'running' && (
         <SimulationEngine key={attempt} simulation={simulation} onFinish={handleFinish} />
+      )}
+
+      {phase === 'result' && justCompletedModule && (
+        <ModuleCompleteNotice moduleTitle={module.title} />
       )}
 
       {phase === 'result' && summary && (
@@ -183,11 +195,11 @@ function SimulationIntro({ simulation, module, onStart }: SimulationIntroProps) 
         <Badge>{formatMinutes(simulation.estimatedMinutes)}</Badge>
       </div>
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{simulation.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">Módulo: {module.title}</p>
-        <p className="mt-2 whitespace-pre-line text-slate-700">{simulation.description}</p>
+        <h1 className="page-title">{simulation.title}</h1>
+        <p className="mt-1 text-sm text-ink-muted">Módulo: {module.title}</p>
+        <p className="mt-2 whitespace-pre-line text-ink-soft">{simulation.description}</p>
       </div>
-      <div className="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-slate-800">
+      <div className="rounded-card bg-warning-soft p-4 text-sm text-ink">
         <p className="font-semibold">Isto é uma simulação.</p>
         <p className="mt-1">
           As mensagens imitam um golpe de propósito, para você treinar. Pessoas, empresas, telefones
@@ -195,7 +207,7 @@ function SimulationIntro({ simulation, module, onStart }: SimulationIntroProps) 
           instituição real entra em contato pelo LumInsight.
         </p>
       </div>
-      <ul className="flex flex-col gap-1 text-sm text-slate-700">
+      <ul className="flex flex-col gap-1 text-sm text-ink-soft">
         <li>{formatDecisionCount(getDecisionCountRange(simulation.scenes))}</li>
         <li>Depois de escolher uma opção, não dá para alterá-la.</li>
         <li>Cada decisão mostra o sinal que entregava o golpe.</li>

@@ -130,6 +130,18 @@ describe('Quiz', () => {
     expect(markModuleCompleted).toHaveBeenCalledWith(TEST_USER.uid, 'modulo-01')
   })
 
+  it('mostra o aviso de módulo concluído só quando a conclusão acontece agora', async () => {
+    const user = userEvent.setup()
+    renderQuiz()
+
+    await answerAll(user, 'Alternativa A')
+
+    expect(await screen.findByText('Módulo concluído')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Refazer quiz' }))
+    expect(screen.queryByText('Módulo concluído')).not.toBeInTheDocument()
+  })
+
   it('não marca o módulo como concluído quando reprova', async () => {
     const user = userEvent.setup()
     renderQuiz()
@@ -139,6 +151,7 @@ describe('Quiz', () => {
     expect(await screen.findByText('Reprovado')).toBeInTheDocument()
     expect(saveQuizResult).toHaveBeenCalledOnce()
     expect(markModuleCompleted).not.toHaveBeenCalled()
+    expect(screen.queryByText('Módulo concluído')).not.toBeInTheDocument()
   })
 
   it('mostra a nota com aviso quando falha ao salvar', async () => {
@@ -163,5 +176,30 @@ describe('Quiz', () => {
     await user.click(await screen.findByRole('button', { name: 'Refazer quiz' }))
 
     expect(screen.getByText('Questão 1 de 2')).toBeInTheDocument()
+  })
+
+  it('dá pra fazer o quiz inteiro só com teclado sem perder o foco', async () => {
+    const user = userEvent.setup()
+    renderQuiz()
+
+    const start = await screen.findByRole('button', { name: 'Começar quiz' })
+    start.focus()
+    await user.keyboard('{Enter}')
+
+    for (let index = 0; index < 2; index++) {
+      await user.tab()
+      expect(screen.getAllByRole('radio')[0]).toHaveFocus()
+      await user.keyboard(' ')
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Confirmar resposta' })).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      // Depois de confirmar, o foco vai pro próximo passo em vez de cair no body.
+      const next = screen.getByRole('button', { name: /Próxima questão|Ver resultado/ })
+      expect(next).toHaveFocus()
+      await user.keyboard('{Enter}')
+    }
+
+    expect(await screen.findByText('Aprovado')).toBeInTheDocument()
   })
 })

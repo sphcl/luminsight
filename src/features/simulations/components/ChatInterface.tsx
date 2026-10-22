@@ -23,9 +23,9 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
     <>
       <section
         aria-label={`Conversa simulada com ${contact.name}`}
-        className="flex flex-col overflow-hidden rounded-card border border-surface-border bg-white shadow-card"
+        className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
       >
-        <header className="flex items-center gap-3 border-b border-surface-border bg-surface-muted px-4 py-3">
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
           <ContactAvatar name={contact.name} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-slate-900">{contact.name}</p>
@@ -39,7 +39,7 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
             if (entry.kind === 'reply') {
               return (
                 <li key={entry.key} className="flex justify-end">
-                  <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2 text-sm text-white">
+                  <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-sm text-white">
                     <span className="sr-only">Você: </span>
                     {entry.text}
                   </p>
@@ -60,7 +60,7 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
                 <ContactAvatar name={contact.name} className="h-8 w-8 text-xs" />
                 <div className="max-w-[80%]">
                   <p className="mb-1 text-xs font-medium text-slate-500">{contact.name}</p>
-                  <p className="rounded-2xl rounded-bl-sm bg-white px-4 py-2 text-sm text-slate-900 shadow-card">
+                  <p className="rounded-2xl rounded-bl-sm bg-white px-4 py-2 text-sm text-slate-900 shadow-sm">
                     {entry.message.content}
                   </p>
                 </div>
@@ -74,7 +74,7 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
           )}
         </ol>
 
-        <div className="border-t border-surface-border bg-white p-4">
+        <div className="border-t border-slate-200 bg-white p-4">
           <SceneDecision session={session} variant="quick-reply" />
         </div>
       </section>

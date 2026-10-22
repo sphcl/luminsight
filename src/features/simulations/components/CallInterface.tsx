@@ -39,10 +39,10 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
     <>
       <section
         aria-label={`Ligação simulada com ${contact.name}`}
-        className="flex flex-col gap-4 rounded-card bg-slate-900 p-5 text-white shadow-card"
+        className="flex flex-col gap-4 rounded-lg bg-slate-900 p-5 text-white shadow-sm"
       >
         <header className="flex flex-col items-center gap-2 text-center">
-          <span className="rounded bg-warning-500 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">
+          <span className="rounded bg-amber-400 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-slate-900">
             Ligação simulada
           </span>
           <ContactAvatar name={contact.name} className="h-16 w-16 text-lg" />
@@ -65,7 +65,7 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
           {transcript.map((entry) => {
             if (entry.kind === 'reply') {
               return (
-                <li key={entry.key} className="text-primary-200">
+                <li key={entry.key} className="text-indigo-200">
                   <span className="font-semibold">Você:</span> {entry.text}
                 </li>
               )
