@@ -23,8 +23,3 @@ export const useAuthStore = create<AuthState>((set) => ({
   reset: () => set({ user: null, userDocument: null }),
 }))
 
-// Seletores individuais: cada componente reage só à fatia de estado que usa,
-// em vez de re-renderizar sempre que qualquer campo do store muda
-export const selectUser = (state: AuthState): AuthUser | null => state.user
-export const selectUserDocument = (state: AuthState): UserDocument | null => state.userDocument
-export const selectIsInitializing = (state: AuthState): boolean => state.isInitializing

@@ -310,6 +310,48 @@ describe('validateContent', () => {
     expect(validateContent([entry], [])).not.toEqual([])
   })
 
+  it.each([
+    [
+      'conteúdo de lição',
+      {
+        lessons: [
+          buildLesson({
+            data: {
+              title: 'Lição',
+              order: 1,
+              estimatedMinutes: 5,
+              readingTimeSeconds: 60,
+              content: [{ type: 'text' as const, content: '[PENDENTE] texto' }],
+            },
+          }),
+        ],
+      },
+    ],
+    [
+      'título de lição',
+      { lessons: [buildLesson({ data: { ...buildLesson().data, title: '[PENDENTE] título' } })] },
+    ],
+    [
+      'questão do quiz',
+      { quiz: [buildQuestion({ explanation: '[PENDENTE] explicação' }), ...buildQuiz().slice(1)] },
+    ],
+    ['título do módulo', { module: buildModule({ isActive: true, title: '[PENDENTE] Módulo' }) }],
+  ])('reprova [PENDENTE] em %s com isActive: true', (_, overrides) => {
+    const entry = buildEntry({ module: buildModule({ isActive: true }), ...overrides })
+    expect(validateContent([entry], []).join()).toContain('[PENDENTE]')
+  })
+
+  it('o conteúdo real não publica nenhum módulo ativo com [PENDENTE]', () => {
+    for (const entry of CONTENT_MODULES.filter((item) => item.module.isActive)) {
+      expect(hasPendingText(entry.module), entry.id).toBe(false)
+      expect(
+        entry.lessons.some((lesson) => hasPendingText(lesson.data)),
+        entry.id
+      ).toBe(false)
+      expect(entry.quiz.some(hasPendingText), entry.id).toBe(false)
+    }
+  })
+
   it('aceita módulo com [PENDENTE] enquanto isActive: false', () => {
     const entry = buildEntry({
       module: buildModule({ isActive: false, description: '[PENDENTE] texto' }),

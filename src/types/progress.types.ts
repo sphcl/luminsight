@@ -2,8 +2,8 @@ import type { Timestamp, FieldValue } from 'firebase/firestore'
 
 // Documento da subcoleção "users/{uid}/progress/{moduleId}": o path já
 // amarra o progresso ao usuário e ao módulo, então nenhum dos dois vira
-// campo aqui. O id do documento é o próprio moduleId, então getModuleProgress
-// é um doc() direto, sem precisar de query.
+// campo aqui. O id do documento é o próprio moduleId, então o progresso
+// de um módulo é um doc() direto, sem precisar de query.
 export interface ProgressDocument {
   startedAt: Timestamp | FieldValue
   completedAt: Timestamp | FieldValue | null

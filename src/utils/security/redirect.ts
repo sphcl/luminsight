@@ -4,6 +4,8 @@
 // o param usar sempre a mesma chave.
 export const REDIRECT_QUERY_PARAM = 'redirect'
 
+const SAME_ORIGIN_BASE = 'https://luminsight.invalid'
+
 // Valida que um valor vindo de query string é um caminho interno seguro para
 // usar em <Navigate>/navigate(). Isso é a defesa contra open redirect: sem
 // essa checagem, um link como "/login?redirect=https://site-malicioso.com"
@@ -30,6 +32,16 @@ export function getSafeRedirectPath(value: string | null): string | null {
   // Barra final de segurança: nenhum "esquema://" pode aparecer em nenhum
   // ponto do caminho, mesmo depois dos checks acima.
   if (value.includes('://')) {
+    return null
+  }
+
+  // O navegador descarta tab e quebra de linha ao montar a URL, então "/\t/evil.com" vira "//evil.com".
+  if ([...value].some((char) => char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f)) {
+    return null
+  }
+
+  // Última barreira: resolvo como o navegador faria e exijo que continue na mesma origem.
+  if (new URL(value, SAME_ORIGIN_BASE).origin !== SAME_ORIGIN_BASE) {
     return null
   }
 

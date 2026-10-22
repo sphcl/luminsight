@@ -38,4 +38,34 @@ describe('getSafeRedirectPath', () => {
     expect(getSafeRedirectPath('')).toBeNull()
     expect(getSafeRedirectPath(null)).toBeNull()
   })
+
+  // Cada payload aqui já foi uma forma conhecida de open redirect; se algum passar, a proteção regrediu.
+  it.each([
+    ['https://evil.com'],
+    ['http://evil.com'],
+    ['//evil.com'],
+    ['///evil.com'],
+    ['/\\evil.com'],
+    ['\\\\evil.com'],
+    ['/\t/evil.com'],
+    ['/\n/evil.com'],
+    ['/\r/evil.com'],
+    ['/\u0000/evil.com'],
+    [' //evil.com'],
+    ['javascript:alert(1)'],
+    ['JAVASCRIPT:alert(1)'],
+    ['data:text/html,<script>alert(1)</script>'],
+    ['/redirect/https://evil.com'],
+  ])('rejeita %j', (payload) => {
+    expect(getSafeRedirectPath(payload)).toBeNull()
+  })
+
+  it.each([['/%2F%2Fevil.com'], ['/javascript:alert(1)'], ['/trilha?x=//evil.com']])(
+    'aceita %j porque o navegador trata como caminho do próprio site',
+    (path) => {
+      const safe = getSafeRedirectPath(path)
+      expect(safe).toBe(path)
+      expect(new URL(safe!, 'https://app.example').origin).toBe('https://app.example')
+    }
+  )
 })

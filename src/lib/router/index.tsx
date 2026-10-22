@@ -4,7 +4,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { lazy, Suspense } from 'react'
 import type { ReactElement } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AppLayout, AuthLayout } from '@/components/layout'
 import { ROUTES } from '@/constants/routes'
 import { Landing } from '@/pages/Landing'
@@ -53,7 +53,8 @@ function withSuspense(element: ReactElement): ReactElement {
   return <Suspense fallback={<RouteLoadingFallback />}>{element}</Suspense>
 }
 
-export const router = createBrowserRouter([
+// Exporto as rotas separadas pros testes de fluxo montarem um MemoryRouter com a árvore real.
+export const routes: RouteObject[] = [
   {
     // Rota raiz sem path nem element próprio: existe só para dar um
     // errorElement único que cobre qualquer erro de render/loader de
@@ -110,4 +111,6 @@ export const router = createBrowserRouter([
       { path: '*', element: withSuspense(<NotFound />) },
     ],
   },
-])
+]
+
+export const router = createBrowserRouter(routes)

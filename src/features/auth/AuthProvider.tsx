@@ -5,6 +5,7 @@ import type { User } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { ensureUserDocument } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
+import { mapFirestoreError } from '@/utils/security/errors'
 import type { AuthUser } from '@/types/user.types'
 
 interface AuthProviderProps {
@@ -36,6 +37,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return
           }
 
+          // Sem isso o guard via usuário sem documento, mandava pro onboarding e o redirect do login se perdia.
+          setIsInitializing(true)
           setUser(toAuthUser(firebaseUser))
 
           const userDocument = await ensureUserDocument({
@@ -46,6 +49,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           })
 
           setUserDocument(userDocument)
+        } catch (caughtError) {
+          // Sem o catch a falha virava promise rejeitada solta; o código do erro só sai no console em DEV.
+          mapFirestoreError(caughtError)
+          setUserDocument(null)
         } finally {
           // Garante que a tela de carregamento inicial sempre termine,
           // mesmo se o Firestore falhar (ex.: sem internet, regra negando acesso)

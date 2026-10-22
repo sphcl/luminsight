@@ -34,8 +34,9 @@ jobs:
       - name: Auditoria de segurança das dependências
         run: npm run audit:check
 
-      - name: Testes
-        run: npm run test:run
+      # Falha se a cobertura cair abaixo dos mínimos do vite.config.ts (80% em segurança e engines, 60% no resto).
+      - name: Testes com cobertura
+        run: npm run test:coverage
 
       - name: Configurar Java (emulador do Firestore)
         uses: actions/setup-java@v4
