@@ -134,17 +134,23 @@ export const quiz01Questions: QuizQuestion[] = [
   {
     id: 'q10',
     type: 'scenario',
-    scenario:
-      'Você recebe uma ligação de alguém que demonstra pressa e apela para a sua empatia, pedindo que você confirme uma informação do seu cadastro.',
-    prompt: 'Qual é a melhor atitude?',
+    scenario: 'Você recebe um áudio de um número desconhecido. A voz é igual à de um parente seu.',
+    prompt:
+      'Segundo o que este módulo apresentou, por que a voz já não é prova suficiente de identidade?',
     options: [
-      { id: 'a', text: 'Confirmar a informação, já que a pessoa parece precisar de ajuda.' },
-      { id: 'b', text: 'Perguntar o nome e o setor do atendente antes de confirmar.' },
-      { id: 'c', text: 'Encerrar a ligação e procurar a instituição por um canal oficial.' },
-      { id: 'd', text: 'Confirmar apenas parte da informação, para testar a pessoa.' },
+      {
+        id: 'a',
+        text: 'Porque áudios perdem qualidade ao serem enviados por aplicativos de mensagem.',
+      },
+      {
+        id: 'b',
+        text: 'Porque criminosos usam IA para imitar a voz de pessoas conhecidas, e nem sempre é possível distinguir o que é gerado do que é real.',
+      },
+      { id: 'c', text: 'Porque a voz muda quando a pessoa está nervosa ou com pressa.' },
+      { id: 'd', text: 'Porque a voz só é confiável em ligação ao vivo, nunca em áudio gravado.' },
     ],
-    correctOptionId: 'c',
+    correctOptionId: 'b',
     explanation:
-      'Pressa e apelo emocional juntos são o padrão clássico do vishing. Perguntar nome e setor não resolve, porque o golpista inventa qualquer resposta. Trocar para um canal que você mesmo inicia desmonta o ataque.',
+      'O módulo mostra que, com IA, criminosos conseguem imitar a voz de pessoas conhecidas em deepfakes de áudio, a ponto de muitas vezes já não conseguirmos distinguir com clareza o que é gerado e o que é real.',
   },
 ]

@@ -17,6 +17,8 @@ interface SimulationResultProps {
   saveStatus: SaveStatus
   backTo: string
   onRetry: () => void
+  // Na conversa a faixa já vem da interface que fica na tela; aqui ela duplicaria.
+  showIndicator?: boolean
 }
 
 export function SimulationResult({
@@ -26,6 +28,7 @@ export function SimulationResult({
   saveStatus,
   backTo,
   onRetry,
+  showIndicator = true,
 }: SimulationResultProps) {
   const decisionsByScene = new Map(summary.decisions.map((record) => [record.sceneId, record]))
   // Em simulação ramificada a pessoa não passa por todas as cenas, então só reviso as que ela viu.
@@ -116,7 +119,7 @@ export function SimulationResult({
           })}
         </ol>
       </section>
-      <SimulationIndicator />
+      {showIndicator && <SimulationIndicator />}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { SimulationDecision } from '@/types/simulation.types'
 import { cn } from '@/utils/helpers/classnames'
 
@@ -7,6 +8,8 @@ interface DecisionPanelProps {
   decision: SimulationDecision
   variant: DecisionPanelVariant
   onChoose: (optionId: string) => void
+  // Na conversa, o grupo novo de opções puxa o foco assim que aparece.
+  autoFocus?: boolean
 }
 
 const listStyles: Record<DecisionPanelVariant, string> = {
@@ -24,7 +27,18 @@ const optionStyles: Record<DecisionPanelVariant, string> = {
     'min-h-11 rounded-lg border border-slate-500 bg-slate-800 px-4 py-3 text-left text-sm text-white hover:bg-slate-700',
 }
 
-export function DecisionPanel({ decision, variant, onChoose }: DecisionPanelProps) {
+export function DecisionPanel({
+  decision,
+  variant,
+  onChoose,
+  autoFocus = false,
+}: DecisionPanelProps) {
+  const firstOptionRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (autoFocus) firstOptionRef.current?.focus()
+  }, [autoFocus])
+
   return (
     <fieldset className="flex flex-col gap-3">
       <legend
@@ -37,9 +51,10 @@ export function DecisionPanel({ decision, variant, onChoose }: DecisionPanelProp
       </legend>
       {/* eslint-disable-next-line security/detect-object-injection -- chave restrita por union type */}
       <div className={listStyles[variant]}>
-        {decision.options.map((option) => (
+        {decision.options.map((option, index) => (
           <button
             key={option.id}
+            ref={index === 0 ? firstOptionRef : undefined}
             type="button"
             onClick={() => onChoose(option.id)}
             className={cn(

@@ -89,9 +89,10 @@ describe('SimulationEngine', () => {
     expect(screen.getByLabelText('Duração da chamada')).toHaveTextContent('0:03')
   })
 
-  it('mostra o feedback e esconde as opções depois de decidir', async () => {
+  // No email o fluxo antigo continua: feedback em painel e botão de continuar.
+  it('email mostra o feedback e esconde as opções depois de decidir', async () => {
     const user = userEvent.setup()
-    renderEngine('chat')
+    renderEngine('email')
 
     await user.click(screen.getByRole('button', { name: 'Opção B' }))
 
@@ -100,10 +101,10 @@ describe('SimulationEngine', () => {
     expect(screen.queryByRole('button', { name: 'Opção A' })).not.toBeInTheDocument()
   })
 
-  it('percorre todas as cenas e chama onFinish com o resumo', async () => {
+  it('email percorre todas as cenas e chama onFinish com o resumo', async () => {
     const user = userEvent.setup()
     const onFinish = vi.fn()
-    renderEngine('chat', onFinish)
+    renderEngine('email', onFinish)
 
     await user.click(screen.getByRole('button', { name: 'Opção A' }))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))

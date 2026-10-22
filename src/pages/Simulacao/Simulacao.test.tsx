@@ -37,10 +37,9 @@ function renderSimulacao(simulationId = 'simulacao-01') {
 
 async function playToEnd(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Começar simulação' }))
+  // Conversa: a cena seguinte chega sozinha depois da escolha, sem botão de continuar.
   await user.click(screen.getByRole('button', { name: 'Opção A' }))
-  await user.click(screen.getByRole('button', { name: 'Continuar' }))
-  await user.click(screen.getByRole('button', { name: 'Opção B' }))
-  await user.click(screen.getByRole('button', { name: 'Ver resultado' }))
+  await user.click(await screen.findByRole('button', { name: 'Opção B' }))
 }
 
 describe('Simulacao', () => {
