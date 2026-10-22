@@ -14,9 +14,9 @@ function renderCard(question: PublicQuestion, revealedCorrectOptionId: string | 
   return render(
     <QuestionCard
       question={question}
-      selectedOptionId={revealedCorrectOptionId ? 'b' : null}
+      selectedOptionIds={revealedCorrectOptionId ? ['b'] : []}
       isLocked={revealedCorrectOptionId !== null}
-      revealedCorrectOptionId={revealedCorrectOptionId}
+      revealedCorrectOptionIds={revealedCorrectOptionId ? [revealedCorrectOptionId] : null}
       onSelect={vi.fn()}
     />
   )
@@ -108,5 +108,56 @@ describe('QuestionCard', () => {
     expect(screen.getByText('Correta')).toBeInTheDocument()
     expect(screen.getByText('Sua resposta')).toBeInTheDocument()
     screen.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled())
+  })
+
+  it('multiple_answer usa checkbox, mostra cenário e avisa quantas são corretas', () => {
+    render(
+      <QuestionCard
+        question={{
+          id: 'q6',
+          type: 'multiple_answer',
+          prompt: 'Quais serão suas ações?',
+          scenario: 'Um curso suspeito.',
+          options: fourOptions,
+          expectedSelections: 2,
+        }}
+        selectedOptionIds={['a', 'c']}
+        isLocked={false}
+        revealedCorrectOptionIds={null}
+        onSelect={vi.fn()}
+      />
+    )
+
+    const group = screen.getByRole('group', { name: 'Quais serão suas ações?' })
+    expect(group).toHaveAccessibleDescription(
+      'Mais de uma alternativa está correta. Marque as 2 alternativas corretas.'
+    )
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
+    const boxes = screen.getAllByRole('checkbox')
+    expect(boxes).toHaveLength(4)
+    expect(boxes.filter((box) => (box as HTMLInputElement).checked)).toHaveLength(2)
+    expect(screen.getByText('Um curso suspeito.')).toBeInTheDocument()
+    expect(screen.getByText('Múltipla resposta')).toBeInTheDocument()
+  })
+
+  it('multiple_answer revelado marca todas as certas e a escolhida errada', () => {
+    render(
+      <QuestionCard
+        question={{
+          id: 'q6',
+          type: 'multiple_answer',
+          prompt: 'Quais?',
+          options: fourOptions,
+          expectedSelections: 2,
+        }}
+        selectedOptionIds={['a', 'b']}
+        isLocked
+        revealedCorrectOptionIds={['a', 'd']}
+        onSelect={vi.fn()}
+      />
+    )
+
+    expect(screen.getAllByText('Correta')).toHaveLength(2)
+    expect(screen.getAllByText('Sua resposta')).toHaveLength(1)
   })
 })

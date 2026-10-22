@@ -7,10 +7,10 @@ import { cn } from '@/utils/helpers/classnames'
 
 interface QuestionCardProps {
   question: PublicQuestion
-  selectedOptionId: string | null
+  selectedOptionIds: string[]
   isLocked: boolean
   // Só chega preenchido depois da resposta confirmada; antes disso o card não sabe qual é a certa.
-  revealedCorrectOptionId: string | null
+  revealedCorrectOptionIds: string[] | null
   onSelect: (optionId: string) => void
 }
 
@@ -19,19 +19,21 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   true_false: 'Verdadeiro ou falso',
   scenario: 'Cenário',
   visual: 'Imagem',
+  multiple_answer: 'Múltipla resposta',
 }
 
 function getOptionState(
   optionId: string,
-  selectedOptionId: string | null,
-  revealedCorrectOptionId: string | null
+  selectedOptionIds: string[],
+  revealedCorrectOptionIds: string[] | null
 ): 'idle' | 'selected' | 'correct' | 'wrong' {
-  if (revealedCorrectOptionId !== null) {
-    if (optionId === revealedCorrectOptionId) return 'correct'
-    if (optionId === selectedOptionId) return 'wrong'
+  const isSelected = selectedOptionIds.includes(optionId)
+  if (revealedCorrectOptionIds !== null) {
+    if (revealedCorrectOptionIds.includes(optionId)) return 'correct'
+    if (isSelected) return 'wrong'
     return 'idle'
   }
-  return optionId === selectedOptionId ? 'selected' : 'idle'
+  return isSelected ? 'selected' : 'idle'
 }
 
 const optionStateStyles = {
@@ -42,17 +44,21 @@ const optionStateStyles = {
 }
 
 export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
-  ({ question, selectedOptionId, isLocked, revealedCorrectOptionId, onSelect }, legendRef) => {
+  ({ question, selectedOptionIds, isLocked, revealedCorrectOptionIds, onSelect }, legendRef) => {
+    const isMultiple = question.type === 'multiple_answer'
+    const scenario = question.type === 'scenario' || isMultiple ? question.scenario : undefined
+    const hintId = `question-${question.id}-hint`
+
     return (
       <div className="flex flex-col gap-4">
         <Badge className="self-start">{TYPE_LABELS[question.type]}</Badge>
 
-        {question.type === 'scenario' && (
+        {scenario && (
           <aside className="rounded-card border-l-4 border-primary-500 bg-primary-50 p-4 leading-relaxed text-slate-800">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">
               Cenário
             </p>
-            <p className="mt-1">{question.scenario}</p>
+            <p className="mt-1 whitespace-pre-line">{scenario}</p>
           </aside>
         )}
 
@@ -73,7 +79,11 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
             />
           ))}
 
-        <fieldset disabled={isLocked} className="flex flex-col gap-2">
+        <fieldset
+          disabled={isLocked}
+          aria-describedby={isMultiple ? hintId : undefined}
+          className="flex flex-col gap-2"
+        >
           <legend
             ref={legendRef}
             tabIndex={-1}
@@ -81,9 +91,15 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
           >
             {question.prompt}
           </legend>
+          {isMultiple && (
+            <p id={hintId} className="-mt-2 mb-2 text-sm font-medium text-primary-700">
+              Mais de uma alternativa está correta. Marque as {question.expectedSelections}{' '}
+              alternativas corretas.
+            </p>
+          )}
           <div className={cn('grid gap-2', question.type === 'true_false' && 'sm:grid-cols-2')}>
             {question.options.map((option) => {
-              const state = getOptionState(option.id, selectedOptionId, revealedCorrectOptionId)
+              const state = getOptionState(option.id, selectedOptionIds, revealedCorrectOptionIds)
               return (
                 <label
                   key={option.id}
@@ -96,10 +112,10 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
                   )}
                 >
                   <input
-                    type="radio"
+                    type={isMultiple ? 'checkbox' : 'radio'}
                     name={`question-${question.id}`}
                     value={option.id}
-                    checked={selectedOptionId === option.id}
+                    checked={selectedOptionIds.includes(option.id)}
                     onChange={() => onSelect(option.id)}
                     className="accent-primary-600"
                   />

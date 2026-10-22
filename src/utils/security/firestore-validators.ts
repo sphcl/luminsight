@@ -52,6 +52,12 @@ const contentBlockSchema = z.discriminatedUnion('type', [
     title: z.string(),
     caption: z.string().optional(),
   }),
+  z.object({
+    type: z.literal('link'),
+    url: z.url({ protocol: /^https$/ }),
+    title: z.string(),
+    description: z.string().optional(),
+  }),
 ])
 
 const lessonSchema = z.object({

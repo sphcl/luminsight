@@ -285,6 +285,45 @@ describe('cadeia de dependências dos cinco módulos reais', () => {
 
     expect(getModuleStatus(getModule('modulo-05'), progressMap, modules)).toBe('available')
   })
+
+  it('a cadeia de requiredModuleId vai do 1 ao 5 sem pular nem repetir', () => {
+    const chain = ['modulo-01', 'modulo-02', 'modulo-03', 'modulo-04', 'modulo-05']
+
+    chain.forEach((id, index) => {
+      expect(getModule(id).requiredModuleId).toBe(index === 0 ? null : chain[index - 1])
+      expect(getModule(id).isActive).toBe(true)
+    })
+  })
+
+  it('módulo 5 sem simulação conclui com lições e quiz aprovado', () => {
+    const modulo05 = getModule('modulo-05')
+    expect(modulo05.hasSimulation).toBe(false)
+
+    const progressMap: ProgressMap = {
+      'modulo-01': completeProgress(getModule('modulo-01').totalLessons),
+      'modulo-02': completeProgress(getModule('modulo-02').totalLessons),
+      'modulo-03': completeProgress(getModule('modulo-03').totalLessons),
+      'modulo-04': completeProgress(getModule('modulo-04').totalLessons),
+      'modulo-05': buildProgress({
+        lessonsCompleted: ['licao-01', 'licao-02', 'licao-03'],
+        quizBestScore: QUIZ_PASSING_SCORE,
+      }),
+    }
+
+    expect(getModuleStatus(modulo05, progressMap, modules)).toBe('completed')
+    expect(calculateModuleProgress(modulo05, progressMap['modulo-05'])).toBe(100)
+  })
+
+  it('com os cinco módulos concluídos a trilha fecha: tudo completed, nada bloqueado', () => {
+    const progressMap: ProgressMap = Object.fromEntries(
+      modules.map((module) => [module.id, completeProgress(module.totalLessons)])
+    )
+
+    expect(modules.map((module) => getModuleStatus(module, progressMap, modules))).toEqual(
+      modules.map(() => 'completed')
+    )
+    expect(calculateTrailProgress(modules, progressMap)).toBe(100)
+  })
 })
 
 describe('calculateTrailProgress', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { ContentBlockRenderer } from './ContentBlockRenderer'
 import type { ContentBlock } from '@/types/module.types'
 
@@ -79,6 +79,81 @@ describe('ContentBlockRenderer', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.getByText('Ative as legendas.')).toBeInTheDocument()
     expect(document.querySelector('iframe')).toBeNull()
+  })
+
+  it('negrito com ** vira <strong> e o resto continua texto escapado', () => {
+    const { container } = render(
+      <ContentBlockRenderer
+        block={{ type: 'text', content: 'Sara fez um **Pix** e depois <b>nada</b> **aqui**.' }}
+      />
+    )
+
+    const strong = [...container.querySelectorAll('strong')].map((node) => node.textContent)
+    expect(strong).toEqual(['Pix', 'aqui'])
+    expect(container.querySelector('b')).toBeNull()
+    expect(container.textContent).toBe('Sara fez um Pix e depois <b>nada</b> aqui.')
+  })
+
+  it('** sem fechar fica literal e não engole o resto do parágrafo', () => {
+    const { container } = render(
+      <ContentBlockRenderer block={{ type: 'text', content: 'texto **sem fechar até o fim' }} />
+    )
+
+    expect(container.querySelector('strong')).toBeNull()
+    expect(container.textContent).toBe('texto **sem fechar até o fim')
+  })
+
+  it('**** sem conteúdo no meio não vira negrito vazio', () => {
+    const { container } = render(
+      <ContentBlockRenderer block={{ type: 'text', content: 'antes **** depois e **isto** sim' }} />
+    )
+
+    const strong = [...container.querySelectorAll('strong')].map((node) => node.textContent)
+    expect(strong).toEqual(['isto'])
+    expect(container.textContent).toBe('antes **** depois e isto sim')
+  })
+
+  it('texto sem marcação sai exatamente igual', () => {
+    const content = 'Um texto comum, com * asterisco solto e nada mais.'
+    const { container } = render(<ContentBlockRenderer block={{ type: 'text', content }} />)
+
+    expect(container.querySelector('strong')).toBeNull()
+    expect(container.textContent).toBe(content)
+  })
+
+  it.each([
+    [
+      'video',
+      { type: 'video' as const, url: 'https://www.youtube.com/watch?v=abc', title: 'Vídeo do BC' },
+      'Vídeo externo',
+    ],
+    [
+      'link',
+      {
+        type: 'link' as const,
+        url: 'https://www.consumidor.gov.br',
+        title: 'Consumidor.gov.br',
+        description: 'Plataforma oficial.',
+      },
+      'Link externo',
+    ],
+  ])('%s abre em nova aba sem opener e avisa isso no nome acessível', (_, block, label) => {
+    render(<ContentBlockRenderer block={block} />)
+
+    const link = screen.getByRole('link', { name: (name) => name.includes(block.title) })
+    expect(link).toHaveAttribute('href', block.url)
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link).toHaveAccessibleName(expect.stringContaining('Abre em uma nova aba'))
+    expect(within(link).getByText(label)).toBeInTheDocument()
+  })
+
+  it('não renderiza link com url que não é https', () => {
+    const { container } = render(
+      <ContentBlockRenderer block={{ type: 'link', url: 'http://cert.br', title: 'CERT' }} />
+    )
+
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('não renderiza video com url que não é https', () => {

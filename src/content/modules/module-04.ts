@@ -1,15 +1,15 @@
-import type { ModuleDocument } from '@/types/module.types'
 import {
   PLACEHOLDER_COLOR,
   PLACEHOLDER_ICON,
   buildLessonData,
   type LessonEntry,
+  type ModuleContent,
 } from '@/content/types'
 import { MODULE_03_ID } from './module-03'
 
 export const MODULE_04_ID = 'modulo-04'
 
-export const module04: ModuleDocument = {
+export const module04: ModuleContent = {
   title: 'Casos Reais e Golpes Modernos',
   description:
     'Acompanhe dois casos documentados no Brasil, o golpe do falso gerente e uma quadrilha que usava IA em escala, e o que eles ensinam sobre fraude.',
@@ -17,7 +17,6 @@ export const module04: ModuleDocument = {
   icon: PLACEHOLDER_ICON,
   color: PLACEHOLDER_COLOR,
   difficulty: 'intermediario',
-  estimatedMinutes: 35,
   totalLessons: 3,
   isActive: true,
   hasSimulation: true,

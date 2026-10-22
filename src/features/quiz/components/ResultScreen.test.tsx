@@ -10,7 +10,7 @@ const questions = buildQuestions(10)
 function renderResult(correctCount: number, saveStatus: SaveStatus = 'saved') {
   const answers = questions.map((question, index) => ({
     questionId: question.id,
-    selectedOptionId: index < correctCount ? 'a' : 'b',
+    selectedOptionIds: [index < correctCount ? 'a' : 'b'],
     correct: index < correctCount,
   }))
 

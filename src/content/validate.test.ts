@@ -154,6 +154,85 @@ describe('validateContent', () => {
     expect(validateContent([entry], [])).not.toEqual([])
   })
 
+  it('aceita multiple_choice com cinco alternativas e recusa com seis', () => {
+    const options = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ id, text: id }))
+    const five = buildEntry({
+      quiz: [buildQuestion({ options: options.slice(0, 5) }), ...buildQuiz().slice(1)],
+    })
+    const six = buildEntry({ quiz: [buildQuestion({ options }), ...buildQuiz().slice(1)] })
+
+    expect(validateContent([five], [])).toEqual([])
+    expect(validateContent([six], []).join()).toContain('4 ou 5 alternativas')
+  })
+
+  it.each([
+    ['menos de 2 corretas', ['a'], '2 alternativas corretas'],
+    ['corretas repetidas', ['a', 'a'], '2 alternativas corretas'],
+    ['id que não existe', ['a', 'z'], '"z"'],
+  ])('acusa multiple_answer com %s', (_, correctOptionIds, message) => {
+    const question: QuizQuestion = {
+      id: 'q1',
+      type: 'multiple_answer',
+      prompt: 'Quais?',
+      options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: id })),
+      correctOptionIds,
+      explanation: 'Explicação',
+    }
+    const entry = buildEntry({ quiz: [question, ...buildQuiz().slice(1)] })
+
+    expect(validateContent([entry], []).join()).toContain(message)
+  })
+
+  it('acusa negrito aberto sem fechar', () => {
+    const entry = buildEntry({
+      lessons: [
+        buildLesson({
+          data: {
+            ...buildLesson().data,
+            content: [{ type: 'text', content: 'Uma **palavra sem fechar' }],
+          },
+        }),
+      ],
+    })
+    expect(validateContent([entry], []).join()).toContain('negrito')
+  })
+
+  it('acusa link sem https', () => {
+    const entry = buildEntry({
+      lessons: [
+        buildLesson({
+          data: {
+            ...buildLesson().data,
+            content: [{ type: 'link', url: 'http://www.consumidor.gov.br', title: 'Canal' }],
+          },
+        }),
+      ],
+    })
+    expect(validateContent([entry], []).join()).toContain('https')
+  })
+
+  it('o módulo 5 real passa limpo e está ativo, sem simulação registrada', () => {
+    const modulo05 = CONTENT_MODULES.find((entry) => entry.id === 'modulo-05')!
+
+    // Valido o conteúdo inteiro porque ordem e requiredModuleId dependem dos outros módulos.
+    const errors = validateContent(CONTENT_MODULES, CONTENT_SIMULATIONS)
+    expect(errors.filter((error) => error.includes('modulo-05'))).toEqual([])
+    expect(errors).toEqual([])
+    expect(modulo05.module).toMatchObject({ isActive: true, hasSimulation: false })
+    expect(CONTENT_SIMULATIONS.some((simulation) => simulation.moduleId === 'modulo-05')).toBe(
+      false
+    )
+  })
+
+  it('nenhum [PENDENTE] sobrou em módulo, lição ou quiz', () => {
+    for (const report of getContentCompletionReport(CONTENT_MODULES)) {
+      expect(report.pendingContentBlocks, report.moduleId).toBe(0)
+      expect(report.pendingQuizQuestions, report.moduleId).toBe(0)
+    }
+    expect(CONTENT_MODULES.every((entry) => !hasPendingText(entry.module))).toBe(true)
+    expect(CONTENT_SIMULATIONS.some(hasPendingText)).toBe(false)
+  })
+
   it('acusa multiple_choice sem quatro alternativas', () => {
     const question = buildQuestion({
       options: [

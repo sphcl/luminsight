@@ -13,11 +13,14 @@ function usesReservedDomain(address: string): boolean {
   return RESERVED_EMAIL_TLDS.some((tld) => domain.endsWith(tld))
 }
 
-// Só esses dois tipos têm número fixo de alternativas definido pelo layout da tela de quiz.
-const EXPECTED_OPTION_COUNT: Partial<Record<QuizQuestion['type'], number>> = {
-  multiple_choice: 4,
-  true_false: 2,
+// Faixa de alternativas que o layout da tela de quiz comporta pra cada tipo.
+const ALLOWED_OPTION_COUNTS: Partial<Record<QuizQuestion['type'], number[]>> = {
+  multiple_choice: [4, 5],
+  multiple_answer: [4, 5],
+  true_false: [2],
 }
+
+const BOLD_MARKER = '**'
 
 export function hasPendingText(value: unknown): boolean {
   if (typeof value === 'string') return value.includes(PENDING_MARKER)
@@ -69,16 +72,38 @@ export function validateContent(
       if (new Set(optionIds).size !== optionIds.length) {
         errors.push(`Módulo "${entry.id}", questão "${question.id}": options com id duplicado.`)
       }
-      const expectedOptions = EXPECTED_OPTION_COUNT[question.type]
-      if (expectedOptions !== undefined && question.options.length !== expectedOptions) {
+      const allowedCounts = ALLOWED_OPTION_COUNTS[question.type]
+      if (allowedCounts && !allowedCounts.includes(question.options.length)) {
         errors.push(
-          `Módulo "${entry.id}", questão "${question.id}": ${question.type} precisa de ${expectedOptions} alternativas, tem ${question.options.length}.`
+          `Módulo "${entry.id}", questão "${question.id}": ${question.type} precisa de ${allowedCounts.join(' ou ')} alternativas, tem ${question.options.length}.`
         )
       }
-      if (!optionIds.includes(question.correctOptionId)) {
+      if (question.type === 'multiple_answer') {
+        const correctIds = question.correctOptionIds
+        if (new Set(correctIds).size < 2) {
+          errors.push(
+            `Módulo "${entry.id}", questão "${question.id}": multiple_answer precisa de pelo menos 2 alternativas corretas distintas.`
+          )
+        }
+        for (const correctId of correctIds.filter((id) => !optionIds.includes(id))) {
+          errors.push(
+            `Módulo "${entry.id}", questão "${question.id}": correctOptionIds tem "${correctId}", que não existe entre as options.`
+          )
+        }
+      } else if (!optionIds.includes(question.correctOptionId)) {
         errors.push(
           `Módulo "${entry.id}", questão "${question.id}": correctOptionId "${question.correctOptionId}" não existe entre as options.`
         )
+      }
+    }
+
+    for (const lesson of entry.lessons) {
+      for (const block of lesson.data.content) {
+        if (block.type === 'text' && block.content.split(BOLD_MARKER).length % 2 === 0) {
+          errors.push(
+            `Módulo "${entry.id}", lição "${lesson.id}": negrito com ${BOLD_MARKER} aberto e não fechado.`
+          )
+        }
       }
     }
 
@@ -120,8 +145,13 @@ export function validateContent(
   for (const entry of modules) {
     for (const lesson of entry.lessons) {
       for (const block of lesson.data.content) {
-        if (block.type === 'video' && !block.url.startsWith('https://')) {
-          errors.push(`Módulo "${entry.id}", lição "${lesson.id}": vídeo precisa de url https.`)
+        if (
+          (block.type === 'video' || block.type === 'link') &&
+          !block.url.startsWith('https://')
+        ) {
+          errors.push(
+            `Módulo "${entry.id}", lição "${lesson.id}": ${block.type} precisa de url https.`
+          )
         }
       }
     }

@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Badge, Button, Card } from '@/components/ui'
 import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
-import type { QuizSummary } from '@/features/quiz/engine/scoring'
-import type { QuizQuestion } from '@/types/quiz.types'
+import { getCorrectOptionIds, type QuizSummary } from '@/features/quiz/engine/scoring'
+import type { QuizOption, QuizQuestion } from '@/types/quiz.types'
 import { cn } from '@/utils/helpers/classnames'
 
 export type SaveStatus = 'saving' | 'saved' | 'error'
@@ -13,6 +13,14 @@ interface ResultScreenProps {
   saveStatus: SaveStatus
   backTo: string
   onRetry: () => void
+}
+
+// Mantenho a ordem das alternativas da questão, não a ordem em que a pessoa clicou.
+function textsOf(options: QuizOption[], ids: string[]): string {
+  return options
+    .filter((option) => ids.includes(option.id))
+    .map((option) => option.text)
+    .join(' / ')
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -74,12 +82,10 @@ export function ResultScreen({
         <ol className="flex flex-col gap-3">
           {questions.map((question, index) => {
             const answer = answersById.get(question.id)
-            const selected = question.options.find(
-              (option) => option.id === answer?.selectedOptionId
-            )
-            const correct = question.options.find(
-              (option) => option.id === question.correctOptionId
-            )
+            const selectedIds = answer?.selectedOptionIds ?? []
+            const correctIds = getCorrectOptionIds(question)
+            const selectedText = textsOf(question.options, selectedIds)
+            const correctText = textsOf(question.options, correctIds)
             const isCorrect = answer?.correct ?? false
 
             return (
@@ -90,10 +96,10 @@ export function ResultScreen({
                   </p>
                   <p className={cn('text-sm', isCorrect ? 'text-success-700' : 'text-danger-700')}>
                     {isCorrect ? 'Acertou' : 'Errou'}: sua resposta foi "
-                    {selected?.text ?? 'sem resposta'}"
+                    {selectedText || 'sem resposta'}"
                   </p>
                   {!isCorrect && (
-                    <p className="text-sm text-slate-700">Resposta correta: "{correct?.text}"</p>
+                    <p className="text-sm text-slate-700">Resposta correta: "{correctText}"</p>
                   )}
                   <p className="text-sm leading-relaxed text-slate-600">{question.explanation}</p>
                 </Card>

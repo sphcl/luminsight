@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Button, Card } from '@/components/ui'
-import type { QuizSummary } from '@/features/quiz/engine/scoring'
+import { getCorrectOptionIds, type QuizSummary } from '@/features/quiz/engine/scoring'
 import { useQuiz } from '@/features/quiz/hooks/useQuiz'
 import { toPublicQuestion } from '@/features/quiz/types/public-question'
 import type { QuizQuestion } from '@/types/quiz.types'
@@ -26,9 +26,11 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
   if (!currentQuestion || quiz.isFinished) return null
 
   const isLastQuestion = quiz.questionNumber === quiz.totalQuestions
-  const correctOption = quiz.hasAnswered
-    ? currentQuestion.options.find((option) => option.id === currentQuestion.correctOptionId)
-    : undefined
+  const correctIds = quiz.hasAnswered ? getCorrectOptionIds(currentQuestion) : []
+  const correctOptionText = currentQuestion.options
+    .filter((option) => correctIds.includes(option.id))
+    .map((option) => option.text)
+    .join(' / ')
 
   return (
     <Card className="flex flex-col gap-6">
@@ -38,16 +40,16 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
         key={currentQuestion.id}
         ref={legendRef}
         question={toPublicQuestion(currentQuestion)}
-        selectedOptionId={quiz.selectedOptionId}
+        selectedOptionIds={quiz.selectedOptionIds}
         isLocked={quiz.hasAnswered}
-        revealedCorrectOptionId={quiz.hasAnswered ? currentQuestion.correctOptionId : null}
+        revealedCorrectOptionIds={quiz.hasAnswered ? correctIds : null}
         onSelect={quiz.selectOption}
       />
 
       {quiz.hasAnswered && quiz.isCorrect !== null && (
         <AnswerFeedback
           isCorrect={quiz.isCorrect}
-          correctOptionText={correctOption?.text ?? ''}
+          correctOptionText={correctOptionText}
           explanation={currentQuestion.explanation}
         />
       )}
@@ -58,7 +60,7 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
             {isLastQuestion ? 'Ver resultado' : 'Próxima questão'}
           </Button>
         ) : (
-          <Button onClick={quiz.confirmAnswer} disabled={quiz.selectedOptionId === null}>
+          <Button onClick={quiz.confirmAnswer} disabled={quiz.selectedOptionIds.length === 0}>
             Confirmar resposta
           </Button>
         )}

@@ -22,6 +22,7 @@ export type HighlightVariant = 'info' | 'warning' | 'danger'
 
 // Bloco de conteúdo de uma lição. Discriminated union por "type" para que
 // o renderizador (Fase 7) faça um switch exaustivo sem type assertions.
+// Em text, trecho entre ** vira negrito; o renderizador monta isso em JSX, nunca como HTML.
 export type ContentBlock =
   | { type: 'text'; content: string }
   | { type: 'heading'; content: string }
@@ -30,6 +31,8 @@ export type ContentBlock =
   | { type: 'example'; title: string; content: string }
   | { type: 'fact'; content: string; source: string }
   | { type: 'video'; url: string; title: string; caption?: string }
+  // Mesmo cartão do vídeo, pra canais e sites externos que não são vídeo.
+  | { type: 'link'; url: string; title: string; description?: string }
 
 // Documento da subcoleção "modules/{moduleId}/lessons": o path já amarra a
 // lição ao módulo, então não guardamos moduleId de novo como campo.

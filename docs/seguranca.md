@@ -298,6 +298,14 @@ orçamento deste trabalho. A arquitetura já está preparada para a mudança: to
 passa pelos serviços em `src/services/`, então trocar a escrita direta por uma chamada de função
 afeta poucos arquivos.
 
+O projeto tem um script de desenvolvimento que faz exatamente isso de propósito:
+`scripts/dev-complete-modules.ts` marca módulos como concluídos para uma conta, para testar a trilha
+sem percorrer todas as lições à mão. Ele usa o Admin SDK, roda só pela linha de comando com a
+credencial de administrador e não faz parte do aplicativo: uma regra do ESLint impede qualquer
+arquivo de `src/` de importar `scripts/` ou o `firebase-admin`. A existência dele não amplia a
+limitação, porque qualquer usuário já consegue o mesmo resultado na própria conta pelo console do
+navegador. O que ele não consegue é tocar na conta de outra pessoa sem a credencial de administrador.
+
 O mesmo raciocínio se aplica ao gabarito dos quizzes, que fica no bundle JavaScript. Ele não está
 no Firestore, então não existe uma consulta estruturada que devolva as respostas, mas quem inspecionar
 o código do aplicativo consegue lê-lo. Com Cloud Functions o gabarito também passaria para o servidor.
@@ -313,7 +321,7 @@ Foi feita uma varredura no código-fonte (`src/`, `scripts/` e `index.html`) e n
 | `console.log` fora de guarda de DEV | Nenhum em `src/`. Os `console.error` e `console.warn` existentes ficam dentro de `if (import.meta.env.DEV)`, então não aparecem em produção. O ESLint barra `console.log` (`no-console`). Os scripts de linha de comando em `scripts/` usam `console.log` porque essa é a interface deles. |
 | Dados sensíveis em `localStorage` ou `sessionStorage` | O código do projeto não usa nenhum dos dois. O SDK do Firebase Auth guarda o token de sessão no IndexedDB do navegador, que é o comportamento padrão dele. Esse token fica acessível a um script que conseguisse rodar na página, e é por isso que a CSP (seção 3.1) é a defesa principal contra roubo de sessão. |
 | Erro do Firebase vazando código interno | Nenhum. Todo erro passa por `mapAuthError` ou `mapFirestoreError` (`src/utils/security/errors.ts`), que devolvem mensagens genéricas. Os erros de credencial ("usuário não existe" e "senha errada") devolvem a mesma mensagem, para não permitir descobrir quais emails têm conta. |
-| Link externo sem `rel="noopener noreferrer"` | O único link externo é o bloco de vídeo das lições (seção 5.1), que usa `target="_blank"` com `rel="noopener noreferrer"`. O outro `<a href>` literal é o link de pular para o conteúdo, interno à página. As fotos do Google são carregadas com `referrerPolicy="no-referrer"`. |
+| Link externo sem `rel="noopener noreferrer"` | Os únicos links externos são os blocos de vídeo e de link das lições (seção 5.1), que usam `target="_blank"` com `rel="noopener noreferrer"`. O outro `<a href>` literal é o link de pular para o conteúdo, interno à página. As fotos do Google são carregadas com `referrerPolicy="no-referrer"`. |
 | Entrada de usuário sem validação Zod | Login, cadastro, onboarding e edição de nome usam Zod. Quiz e simulações usam apenas opções predefinidas, e o quiz é recorrigido pelo gabarito em vez de confiar no que veio da tela. O parâmetro `redirect` da URL passa por `getSafeRedirectPath` (proteção contra open redirect). **Corrigido nesta fase:** os parâmetros de rota (`moduleId`, `lessonId`, `simulationId`) iam direto para os caminhos do Firestore. Agora passam por `parseRouteId` (`src/utils/security/route-params.ts`), que só aceita o formato dos ids de conteúdo. |
 
 ### 5.1 Vídeos nas lições
@@ -333,6 +341,13 @@ Por isso o vídeo entra como um bloco do tipo `video`, renderizado como um cart�
   (`src/utils/security/firestore-validators.ts`) e no próprio componente antes de virar `href`.
   Um `javascript:` gravado por engano no banco nunca chega a ser clicável;
 - a CSP continua sem nenhuma origem em `frame-src` além do domínio de autenticação.
+
+O módulo 5 cita canais oficiais de denúncia (Delegacia Eletrônica, Consumidor.gov.br e CERT.br) e
+um caça-palavras externo. Eles usam um bloco `link`, com o mesmo cartão e as mesmas três
+validações de `https://` do vídeo, mas com o rótulo "Link externo". Nos dois blocos, o aviso de
+que o link abre em nova aba fica dentro do próprio `<a>`, então o leitor de tela anuncia isso junto
+com o nome do link. Esses canais usam endereços reais de propósito: a regra de usar só domínios
+fictícios (`.example`) vale para cenários que simulam golpe, não para referências institucionais.
 
 O custo é de usabilidade: o usuário sai da plataforma para assistir. Para um projeto de Segurança da
 Informação essa troca é intencional, e a lição avisa que o link abre fora do LumInsight.

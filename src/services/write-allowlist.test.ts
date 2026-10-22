@@ -211,7 +211,7 @@ describe('escritas do cliente batem com o que as rules aceitam', () => {
     const summary = summarizeResult(
       questions.map((question) => ({
         questionId: question.id,
-        selectedOptionId: 'a',
+        selectedOptionIds: ['a'],
         correct: true,
       })),
       questions,
