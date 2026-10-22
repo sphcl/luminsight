@@ -158,7 +158,8 @@ function SimulationSession({
         />
       )}
 
-      {phase === 'running' && (
+      {/* Na conversa o histórico fica na tela no fim, e o resultado aparece embaixo dele. */}
+      {(phase === 'running' || (phase === 'result' && simulation.format !== 'email')) && (
         <SimulationEngine key={attempt} simulation={simulation} onFinish={handleFinish} />
       )}
 
@@ -168,6 +169,7 @@ function SimulationSession({
 
       {phase === 'result' && summary && (
         <SimulationResult
+          showIndicator={simulation.format === 'email'}
           summary={summary}
           scenes={simulation.scenes}
           conclusion={simulation.conclusion}

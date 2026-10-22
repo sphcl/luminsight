@@ -18,7 +18,10 @@ import {
 import { buildQuestions } from '@/test/fixtures/quiz'
 
 vi.mock('@/hooks/useAuth')
-vi.mock('@/content/quizzes', () => ({ getQuizForModule: vi.fn() }))
+vi.mock('@/content/quizzes', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getQuizForModule: vi.fn(),
+}))
 vi.mock('@/services/modules.service', () => ({ getModules: vi.fn(), getLessons: vi.fn() }))
 vi.mock('@/services/progress.service', () => ({
   getUserProgress: vi.fn(),
@@ -201,5 +204,27 @@ describe('Quiz', () => {
     }
 
     expect(await screen.findByText('Aprovado')).toBeInTheDocument()
+  })
+
+  it('o quiz do módulo 5 avisa que é final e revisa a trilha inteira', async () => {
+    vi.mocked(getModules).mockResolvedValue([
+      buildModule({ id: 'modulo-05', title: 'Como se proteger', order: 5, hasSimulation: false }),
+    ])
+    vi.mocked(getUserProgress).mockResolvedValue({
+      'modulo-05': buildProgress({ lessonsCompleted: ['licao-01', 'licao-02'] }),
+    })
+    renderQuiz('modulo-05')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Quiz final: Como se proteger' })
+    ).toBeInTheDocument()
+    expect(screen.getByText(/revisa a trilha inteira/)).toBeInTheDocument()
+  })
+
+  it('os outros módulos continuam com o quiz comum, sem o aviso de final', async () => {
+    renderQuiz()
+
+    expect(await screen.findByRole('heading', { name: /^Quiz: / })).toBeInTheDocument()
+    expect(screen.queryByText(/revisa a trilha inteira/)).not.toBeInTheDocument()
   })
 })

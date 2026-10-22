@@ -5,7 +5,7 @@ import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { textLinkClass } from '@/components/ui/linkStyles'
 import { cn } from '@/utils/helpers/classnames'
 import { ROUTES, buildModuleRoute } from '@/constants/routes'
-import { getQuizForModule } from '@/content/quizzes'
+import { getQuizForModule, isFinalQuiz } from '@/content/quizzes'
 import { useAuth } from '@/hooks/useAuth'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
 import { ModuleCompleteNotice } from '@/features/modules/components/ModuleCompleteNotice'
@@ -201,10 +201,20 @@ interface QuizIntroProps {
 function QuizIntro({ module, totalQuestions, progress, onStart }: QuizIntroProps) {
   const bestScore = progress?.quizBestScore ?? null
   const attempts = progress?.quizAttempts ?? 0
+  const isFinal = isFinalQuiz(module.id)
 
   return (
     <Card className="flex flex-col gap-4">
-      <h1 className="page-title">Quiz: {module.title}</h1>
+      <h1 className="page-title">
+        {isFinal ? 'Quiz final' : 'Quiz'}: {module.title}
+      </h1>
+      {isFinal && (
+        <p className="rounded-card bg-accent-soft p-4 text-ink">
+          Este é o quiz final e revisa a trilha inteira, não só este módulo. Além do que você viu
+          aqui, ele cobra conteúdo dos módulos 2 e 3: vishing, clone phishing, deepfake e o uso de
+          IA em engenharia social.
+        </p>
+      )}
       <ul className="flex flex-col gap-1 text-sm text-ink-soft">
         <li>{totalQuestions} questões</li>
         <li>Nota mínima para aprovação: {QUIZ_PASSING_SCORE}</li>

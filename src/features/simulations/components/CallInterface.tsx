@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { buildTranscript } from '@/features/simulations/engine/simulation'
+import { useConversationLog } from '@/features/simulations/hooks/useConversationLog'
 import type { UseSimulationReturn } from '@/features/simulations/hooks/useSimulation'
 import { formatCountdown } from '@/features/modules/hooks/useReadingTimer'
 import type { SimulationDocument } from '@/types/simulation.types'
 import { ContactAvatar } from './ContactAvatar'
 import { SceneDecision } from './SceneDecision'
+import { SimulationFeedbackCard } from './SimulationFeedbackCard'
 import { SimulationIndicator } from './SimulationIndicator'
 
 interface CallInterfaceProps {
@@ -32,8 +34,13 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
   const transcript = buildTranscript(
     session.visitedScenes,
     session.visibleMessages,
-    session.decisions
+    session.decisions,
+    { withFeedback: true }
   )
+  const { logRef, latestFeedbackRef } = useConversationLog(session, transcript.length)
+  const feedbackEntries = transcript.filter((entry) => entry.kind === 'feedback')
+  const lastFeedbackKey = feedbackEntries[feedbackEntries.length - 1]?.key
+  const isTyping = !session.areMessagesComplete && !session.isFinished
 
   return (
     <>
@@ -57,12 +64,26 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
         </header>
 
         <ol
+          ref={logRef}
           role="log"
           aria-live="polite"
           aria-label="Transcrição da ligação"
-          className="flex min-h-48 flex-col gap-2 rounded-lg bg-slate-800 p-4 text-sm"
+          tabIndex={0}
+          className="flex max-h-80 min-h-48 flex-col gap-2 overflow-y-auto rounded-lg bg-slate-800 p-4 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           {transcript.map((entry) => {
+            if (entry.kind === 'feedback') {
+              return (
+                <SimulationFeedbackCard
+                  key={entry.key}
+                  ref={entry.key === lastFeedbackKey ? latestFeedbackRef : undefined}
+                  isCorrect={entry.isCorrect}
+                  feedback={entry.feedback}
+                  correctOptionText={entry.correctOptionText}
+                />
+              )
+            }
+
             if (entry.kind === 'reply') {
               return (
                 <li key={entry.key} className="text-indigo-200">
@@ -85,10 +106,16 @@ export function CallInterface({ simulation, session }: CallInterfaceProps) {
               </li>
             )
           })}
-          {!session.areMessagesComplete && <li className="text-slate-400">...</li>}
+          {isTyping && (
+            <li aria-hidden="true" data-testid="typing-indicator" className="text-slate-400">
+              {contact.name} está falando...
+            </li>
+          )}
         </ol>
 
-        <SceneDecision session={session} variant="response" />
+        {!session.isFinished && (
+          <SceneDecision session={session} variant="response" conversational />
+        )}
       </section>
       <SimulationIndicator />
     </>

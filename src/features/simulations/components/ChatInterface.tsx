@@ -1,9 +1,11 @@
 import { Badge } from '@/components/ui'
 import { buildTranscript } from '@/features/simulations/engine/simulation'
+import { useConversationLog } from '@/features/simulations/hooks/useConversationLog'
 import type { UseSimulationReturn } from '@/features/simulations/hooks/useSimulation'
 import type { SimulationDocument } from '@/types/simulation.types'
 import { ContactAvatar } from './ContactAvatar'
 import { SceneDecision } from './SceneDecision'
+import { SimulationFeedbackCard } from './SimulationFeedbackCard'
 import { SimulationIndicator } from './SimulationIndicator'
 
 interface ChatInterfaceProps {
@@ -16,8 +18,13 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
   const transcript = buildTranscript(
     session.visitedScenes,
     session.visibleMessages,
-    session.decisions
+    session.decisions,
+    { withFeedback: true }
   )
+  const { logRef, latestFeedbackRef } = useConversationLog(session, transcript.length)
+  const feedbackEntries = transcript.filter((entry) => entry.kind === 'feedback')
+  const lastFeedbackKey = feedbackEntries[feedbackEntries.length - 1]?.key
+  const isTyping = !session.areMessagesComplete && !session.isFinished
 
   return (
     <>
@@ -34,8 +41,28 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
           <Badge variant="warning">Contato fictício</Badge>
         </header>
 
-        <ol role="log" aria-live="polite" className="flex min-h-64 flex-col gap-3 bg-slate-50 p-4">
+        {/* tabIndex 0 deixa rolar o histórico pelo teclado, e o log anuncia mensagem nova sem interromper. */}
+        <ol
+          ref={logRef}
+          role="log"
+          aria-live="polite"
+          aria-label={`Conversa com ${contact.name}`}
+          tabIndex={0}
+          className="flex max-h-[28rem] min-h-64 flex-col gap-3 overflow-y-auto bg-slate-50 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+        >
           {transcript.map((entry) => {
+            if (entry.kind === 'feedback') {
+              return (
+                <SimulationFeedbackCard
+                  key={entry.key}
+                  ref={entry.key === lastFeedbackKey ? latestFeedbackRef : undefined}
+                  isCorrect={entry.isCorrect}
+                  feedback={entry.feedback}
+                  correctOptionText={entry.correctOptionText}
+                />
+              )
+            }
+
             if (entry.kind === 'reply') {
               return (
                 <li key={entry.key} className="flex justify-end">
@@ -67,16 +94,23 @@ export function ChatInterface({ simulation, session }: ChatInterfaceProps) {
               </li>
             )
           })}
-          {!session.areMessagesComplete && (
-            <li className="text-xs text-slate-500" aria-label={`${contact.name} está digitando`}>
-              digitando...
+          {/* Fora da árvore de acessibilidade pra o log não anunciar "digitando" a cada mensagem. */}
+          {isTyping && (
+            <li
+              aria-hidden="true"
+              data-testid="typing-indicator"
+              className="text-xs text-slate-500"
+            >
+              {contact.name} está digitando...
             </li>
           )}
         </ol>
 
-        <div className="border-t border-slate-200 bg-white p-4">
-          <SceneDecision session={session} variant="quick-reply" />
-        </div>
+        {!session.isFinished && (
+          <div className="border-t border-slate-200 bg-white p-4">
+            <SceneDecision session={session} variant="quick-reply" conversational />
+          </div>
+        )}
       </section>
       <SimulationIndicator />
     </>

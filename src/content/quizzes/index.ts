@@ -23,3 +23,8 @@ export function getQuizForModule(moduleId: string): QuizQuestion[] | null {
   const questions = QUIZZES_BY_MODULE.get(moduleId)
   return questions && questions.length > 0 ? questions : null
 }
+
+// O quiz do último módulo é o final da trilha: revisa de propósito conteúdo dos módulos anteriores.
+export function isFinalQuiz(moduleId: string): boolean {
+  return moduleId === MODULE_05_ID
+}

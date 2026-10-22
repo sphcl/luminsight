@@ -18,6 +18,8 @@ import type {
 
 interface UseSimulationOptions {
   onFinish?: (summary: SimulationSummary) => void
+  // Conversa (chat e ligação): depois da escolha, a próxima cena chega sozinha, sem botão de continuar.
+  autoAdvance?: boolean
 }
 
 export interface UseSimulationReturn {
@@ -42,7 +44,7 @@ export interface UseSimulationReturn {
 
 export function useSimulation(
   simulation: SimulationDocument,
-  { onFinish }: UseSimulationOptions = {}
+  { onFinish, autoAdvance = false }: UseSimulationOptions = {}
 ): UseSimulationReturn {
   const prefersReducedMotion = usePrefersReducedMotion()
   const scenes = simulation.scenes
@@ -109,13 +111,15 @@ export function useSimulation(
     setDecisions((previous) =>
       previous.some((item) => item.sceneId === record.sceneId) ? previous : [...previous, record]
     )
+
+    if (autoAdvance) {
+      advance(resolveNextSceneId(scenes, currentScene, optionId), [...decisions, record])
+    }
   }
 
-  function goToNextScene() {
-    if (!hasDecided || isFinished) return
-
-    if (nextSceneId !== null) {
-      setPath((previous) => [...previous, nextSceneId])
+  function advance(target: string | null, decisionsSoFar: SimulationDecisionRecord[]) {
+    if (target !== null) {
+      setPath((previous) => [...previous, target])
       setRevealedCount(0)
       return
     }
@@ -123,9 +127,14 @@ export function useSimulation(
     if (hasFinishedRef.current) return
     hasFinishedRef.current = true
 
-    const summary = summarizeSimulation(decisions)
+    const summary = summarizeSimulation(decisionsSoFar)
     setResult(summary)
     onFinish?.(summary)
+  }
+
+  function goToNextScene() {
+    if (!hasDecided || isFinished) return
+    advance(nextSceneId, decisions)
   }
 
   return {

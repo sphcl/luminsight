@@ -32,9 +32,9 @@ vi.mock(
   async () => (await import('@/test/fakeBackend')).fakeSimulationsService
 )
 vi.mock('@/services/quiz.service', async () => (await import('@/test/fakeBackend')).fakeQuizService)
-vi.mock('@/content/quizzes', async () => {
+vi.mock('@/content/quizzes', async (importOriginal) => {
   const { buildQuestions } = await import('@/test/fixtures/quiz')
-  return { getQuizForModule: () => buildQuestions(2) }
+  return { ...(await importOriginal<object>()), getQuizForModule: () => buildQuestions(2) }
 })
 
 const PASSWORD = 'senha-segura-123'
@@ -191,9 +191,7 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
     await router.navigate('/simulacoes/simulacao-01')
     await user.click(await screen.findByRole('button', { name: 'Começar simulação' }, FLOW_TIMEOUT))
     await user.click(await screen.findByRole('button', { name: 'Opção A' }))
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.click(await screen.findByRole('button', { name: 'Opção A' }))
-    await user.click(screen.getByRole('button', { name: 'Ver resultado' }))
     expect(await screen.findByText('Simulação concluída', {}, FLOW_TIMEOUT)).toBeInTheDocument()
 
     await waitFor(() =>

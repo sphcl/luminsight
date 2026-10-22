@@ -137,6 +137,19 @@ export function personalizeSimulation(
 export type TranscriptEntry =
   | { kind: 'message'; key: string; message: SimulationMessage }
   | { kind: 'reply'; key: string; text: string }
+  | {
+      kind: 'feedback'
+      key: string
+      sceneId: string
+      isCorrect: boolean
+      feedback: string
+      correctOptionText: string | null
+    }
+
+interface TranscriptOptions {
+  // Chat e ligação mostram o feedback dentro da conversa; desligado por padrão pra não mudar quem já usa.
+  withFeedback?: boolean
+}
 
 function findOption(
   scene: SimulationScene,
@@ -150,7 +163,8 @@ function findOption(
 export function buildTranscript(
   visitedScenes: SimulationScene[],
   visibleMessages: SimulationMessage[],
-  decisions: SimulationDecisionRecord[]
+  decisions: SimulationDecisionRecord[],
+  { withFeedback = false }: TranscriptOptions = {}
 ): TranscriptEntry[] {
   const entries: TranscriptEntry[] = []
   const lastIndex = visitedScenes.length - 1
@@ -163,7 +177,20 @@ export function buildTranscript(
 
     const record = decisions.find((decision) => decision.sceneId === scene.id)
     const chosen = findOption(scene, record)
-    if (chosen) entries.push({ kind: 'reply', key: `${scene.id}-reply`, text: chosen.text })
+    if (!chosen) return
+    entries.push({ kind: 'reply', key: `${scene.id}-reply`, text: chosen.text })
+
+    if (withFeedback) {
+      const correct = scene.decision.options.find((option) => option.isCorrect)
+      entries.push({
+        kind: 'feedback',
+        key: `${scene.id}-feedback`,
+        sceneId: scene.id,
+        isCorrect: chosen.isCorrect,
+        feedback: chosen.feedback,
+        correctOptionText: chosen.isCorrect ? null : (correct?.text ?? null),
+      })
+    }
   })
 
   return entries

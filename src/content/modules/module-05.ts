@@ -100,6 +100,18 @@ export const module05Lessons: LessonEntry[] = [
         content:
           'Se o golpe foi realizado via Pix, você deve acessar o extrato no aplicativo, selecionar a transação fraudulenta e utilizar a opção de contestação ou devolução. É aqui que entra o MED (Mecanismo Especial de Devolução), uma ferramenta oficial regulada pelo Banco Central que permite ao seu banco solicitar a recuperação do dinheiro diretamente na conta do recebedor golpista, caso ainda haja saldo disponível. Se a fraude ocorreu no cartão de crédito, o processo é similar: localize a compra no app e utilize a opção de Contestar Compra ou Reportar Problema.',
       },
+      { type: 'heading', content: 'O golpe do Pix errado' },
+      {
+        type: 'text',
+        content:
+          'Um golpe comum funciona ao contrário: você recebe um Pix de alguém desconhecido e, pouco depois, essa pessoa entra em contato dizendo que transferiu por engano e pede a devolução para outra chave. O dinheiro costuma vir de uma conta invadida, então devolver para a chave indicada significa perder o valor e ainda aparecer na movimentação do golpe.',
+      },
+      {
+        type: 'highlight',
+        variant: 'warning',
+        content:
+          'A devolução correta é feita pela opção Devolver Pix dentro do aplicativo do banco, que envia o valor de volta para a conta de origem, ou pelo suporte oficial da instituição. Nunca faça um novo Pix para uma chave enviada por mensagem.',
+      },
       { type: 'heading', content: 'Etapas essenciais' },
       {
         type: 'text',
