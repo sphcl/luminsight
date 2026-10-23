@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { calculateModuleProgress, calculateTrailProgress, getModuleStatus } from './trail'
+import {
+  calculateModuleProgress,
+  calculateTrailProgress,
+  getModuleStatus,
+  getUnlockRequirement,
+} from './trail'
 import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { CONTENT_MODULES } from '@/content'
+import { buildTrail } from '@/test/fixtures/modules'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument, ProgressMap } from '@/types/progress.types'
 
@@ -354,5 +360,56 @@ describe('calculateTrailProgress', () => {
     }
 
     expect(calculateTrailProgress([module], progressMap)).toBe(100)
+  })
+})
+
+describe('getUnlockRequirement', () => {
+  const trail = buildTrail()
+  const [modulo01, modulo02, , modulo04] = trail as [
+    ModuleWithId,
+    ModuleWithId,
+    ModuleWithId,
+    ModuleWithId,
+  ]
+
+  it('devolve null para módulo liberado', () => {
+    expect(getUnlockRequirement(modulo01, {}, trail)).toBeNull()
+  })
+
+  it('aponta o que falta no módulo anterior', () => {
+    const progressMap: ProgressMap = {
+      'modulo-01': buildProgress({ lessonsCompleted: ['licao-01'] }),
+    }
+
+    expect(getUnlockRequirement(modulo02, progressMap, trail)).toEqual({
+      kind: 'steps',
+      next: { module: modulo01, lessonsLeft: 1, quiz: 'pending', simulationPending: true },
+      thenModules: [],
+    })
+  })
+
+  it('aponta o primeiro módulo da cadeia que dá pra fazer e lista os bloqueados depois dele', () => {
+    const requirement = getUnlockRequirement(modulo04, {}, trail)
+
+    expect(requirement?.kind).toBe('steps')
+    if (requirement?.kind !== 'steps') return
+    expect(requirement.next.module.id).toBe('modulo-01')
+    expect(requirement.thenModules.map((module) => module.id)).toEqual(['modulo-02', 'modulo-03'])
+  })
+
+  it('diferencia quiz não feito de quiz reprovado', () => {
+    const progressMap: ProgressMap = {
+      'modulo-01': buildProgress({ quizAttempts: 1, quizBestScore: QUIZ_PASSING_SCORE - 1 }),
+    }
+
+    const requirement = getUnlockRequirement(modulo02, progressMap, trail)
+
+    expect(requirement?.kind === 'steps' && requirement.next.quiz).toBe('failed')
+  })
+
+  it('pré-requisito que não existe vira indisponível em vez de mandar a pessoa fazer algo impossível', () => {
+    const orphan = buildModule({ id: 'modulo-09', requiredModuleId: 'nao-existe' })
+
+    expect(getUnlockRequirement(orphan, {}, [orphan])).toEqual({ kind: 'unavailable' })
   })
 })

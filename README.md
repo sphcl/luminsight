@@ -70,6 +70,8 @@ Se preferir salvar em outro caminho, aponte para ele com a variável de ambiente
 FIREBASE_SERVICE_ACCOUNT_PATH=/caminho/para/credencial.json npm run seed
 ```
 
+As simulações que estão no Firestore e não existem mais em `src/content/simulations/` são apagadas no fim do seed, para uma simulação renomeada não aparecer duplicada.
+
 O script se recusa a popular um módulo cujo conteúdo em `src/content/` ainda esteja com os placeholders vazios (`title: ''`), para não publicar algo incompleto na trilha por engano.
 
 **Importante:** o conteúdo do quiz (perguntas, alternativas e gabarito) **não** faz parte do seed, ele nunca vai para o Firestore. Fica em `src/content/quizzes/`, direto no bundle do app. Isso evita que qualquer usuário autenticado consulte a coleção pelo console do navegador e veja as respostas corretas antes de responder. É uma mitigação parcial, não uma proteção completa: quem inspecionar o bundle JS ainda consegue ler as perguntas e o gabarito, só não existe um endpoint estruturado servindo isso.

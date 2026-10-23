@@ -159,4 +159,17 @@ describe('RegisterForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Este email já está cadastrado.')
     expect(screen.queryByText(/auth\//)).not.toBeInTheDocument()
   })
+
+  it('entra com Google sem precisar preencher o formulário', async () => {
+    vi.mocked(loginWithGoogle).mockResolvedValueOnce({} as never)
+    const onSuccess = vi.fn()
+    const user = userEvent.setup()
+    render(<RegisterForm onSuccess={onSuccess} />)
+
+    await user.click(screen.getByRole('button', { name: 'Entrar com Google' }))
+
+    expect(loginWithGoogle).toHaveBeenCalledOnce()
+    expect(registerWithEmail).not.toHaveBeenCalled()
+    expect(onSuccess).toHaveBeenCalledOnce()
+  })
 })

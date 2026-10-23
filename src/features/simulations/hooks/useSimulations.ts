@@ -3,7 +3,11 @@ import { useAuth } from '@/hooks/useAuth'
 import { getModules } from '@/services/modules.service'
 import { getUserProgress } from '@/services/progress.service'
 import { getSimulationById, getSimulations } from '@/services/simulations.service'
-import { getModuleStatus } from '@/features/modules/engine/trail'
+import {
+  getModuleStatus,
+  getUnlockRequirement,
+  type UnlockRequirement,
+} from '@/features/modules/engine/trail'
 import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
@@ -15,6 +19,8 @@ export interface SimulationWithStatus {
   simulation: SimulationDocument
   module: ModuleWithId
   status: SimulationStatus
+  // Só vem preenchido quando está bloqueada.
+  unlockRequirement: UnlockRequirement | null
 }
 
 interface UseSimulationsReturn {
@@ -55,13 +61,16 @@ export function useSimulations(): UseSimulationsReturn {
           if (!module) return []
 
           const isLocked = getModuleStatus(module, progressMap, modules) === 'locked'
+          const unlockRequirement = isLocked
+            ? getUnlockRequirement(module, progressMap, modules)
+            : null
           const isCompleted = progressMap[module.id]?.simulationCompleted ?? false
           const status: SimulationStatus = isLocked
             ? 'locked'
             : isCompleted
               ? 'completed'
               : 'available'
-          return [{ simulation, module, status }]
+          return [{ simulation, module, status, unlockRequirement }]
         })
 
         setData(items.sort((a, b) => a.module.order - b.module.order))

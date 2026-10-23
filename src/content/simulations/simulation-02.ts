@@ -1,176 +1,118 @@
-import type { SimulationDocument, SimulationScene } from '@/types/simulation.types'
-import { MODULE_03_ID } from '@/content/modules/module-03'
+import type {
+  SimulationContact,
+  SimulationDocument,
+  SimulationScene,
+} from '@/types/simulation.types'
+import { MODULE_02_ID } from '@/content/modules/module-02'
 
-// "Parcial" no material vira isCorrect false: só a opção marcada como certa conta ponto.
-const scenes: SimulationScene[] = [
+interface InboxEmail {
+  id: string
+  order: number
+  contact: SimulationContact
+  subject: string
+  sentAt: string
+  body: string
+  isPhishing: boolean
+  justification: string
+}
+
+// Cada email é uma cena com a mesma pergunta; a justificativa aparece seja qual for a escolha.
+function toScene(email: InboxEmail): SimulationScene {
+  return {
+    id: email.id,
+    order: email.order,
+    contact: email.contact,
+    messages: [
+      {
+        sender: 'attacker',
+        content: email.body,
+        subject: email.subject,
+        sentAt: email.sentAt,
+        delay: 600,
+      },
+    ],
+    decision: {
+      prompt: 'Este e-mail é phishing ou normal?',
+      options: [
+        { id: 'a', text: 'Phishing', isCorrect: email.isPhishing, feedback: email.justification },
+        { id: 'b', text: 'Normal', isCorrect: !email.isPhishing, feedback: email.justification },
+      ],
+    },
+  }
+}
+
+const emails: InboxEmail[] = [
   {
-    id: 'cena-01',
+    id: 'email-01',
     order: 1,
-    messages: [
-      {
-        sender: 'attacker',
-        content:
-          'Oi! Sou eu! Meu celular quebrou e estou usando o telefone de um amigo. Preciso da sua ajuda, aconteceu uma coisa e estou desesperado.',
-        delay: 600,
-      },
-    ],
-    decision: {
-      prompt: 'O que você faria?',
-      options: [
-        {
-          id: 'a',
-          text: 'Perguntaria imediatamente o que aconteceu.',
-          isCorrect: false,
-          feedback:
-            'Cuidado. Você ainda não confirmou quem está do outro lado. Continue a conversa, mas não forneça informações pessoais nem faça nenhum pagamento.',
-        },
-        {
-          id: 'b',
-          text: 'Pediria para a pessoa confirmar quem ela é antes de continuar a conversa.',
-          isCorrect: true,
-          feedback:
-            'Boa decisão. Mesmo que a voz pareça familiar, ela pode ter sido clonada por inteligência artificial. Confirmar a identidade é uma forma importante de evitar o golpe.',
-        },
-        {
-          id: 'c',
-          text: 'Ficaria tranquilo, pois reconheceu a voz.',
-          isCorrect: false,
-          feedback:
-            'Cuidado. Reconhecer a voz não é suficiente para confirmar a identidade. Atualmente, ferramentas de IA conseguem reproduzir vozes de pessoas reais.',
-        },
-        {
-          id: 'd',
-          text: 'Perguntaria quanto dinheiro ela precisa.',
-          isCorrect: false,
-          feedback:
-            'Perigo. O golpista pode estar tentando levar você diretamente para uma situação de pagamento. Antes de falar sobre dinheiro, confirme quem está ligando.',
-        },
-      ],
-    },
+    contact: { name: 'Banco Aurora', address: 'seguranca@bancoaur0ra.example' },
+    subject: 'Ação necessária: sua conta será bloqueada',
+    sentAt: '27/08/2026 - 08:42',
+    body: 'Olá, cliente.\n\nIdentificamos uma atividade incomum em sua conta e, por motivos de segurança, precisamos confirmar sua identidade.\n\nPara evitar o bloqueio temporário do seu acesso, confirme seus dados através do link abaixo:\n\n[CONFIRMAR MINHA CONTA]\n\nA confirmação deve ser realizada dentro das próximas 2 horas. Caso contrário, sua conta poderá ser bloqueada temporariamente.\n\nAtenciosamente,\nEquipe de Segurança\nBanco Aurora',
+    isPhishing: true,
+    justification:
+      'O endereço do remetente utiliza "bancoaur0ra", com o número 0 no lugar da letra o, tentando se passar pelo domínio verdadeiro. A mensagem cria um senso de urgência ao afirmar que a conta será bloqueada em apenas 2 horas. Existe um link solicitando que o usuário confirme seus dados. A combinação desses elementos indica uma tentativa de induzir o usuário a clicar no link e fornecer informações.',
   },
   {
-    id: 'cena-02',
+    id: 'email-02',
     order: 2,
-    messages: [
-      {
-        sender: 'attacker',
-        content:
-          'Eu sofri um acidente. Estou bem, mas preciso pagar uma coisa aqui. Você consegue fazer um PIX de R$ 2.000 para mim? É urgente!',
-        delay: 600,
-      },
-    ],
-    decision: {
-      prompt: 'O que você faz?',
-      options: [
-        {
-          id: 'a',
-          text: 'Faz o PIX rapidamente para ajudar.',
-          isCorrect: false,
-          feedback:
-            'Você caiu no golpe. A urgência é uma das principais estratégias utilizadas por golpistas para impedir que a vítima tenha tempo de pensar e verificar a situação.',
-        },
-        {
-          id: 'b',
-          text: 'Pergunta para qual chave PIX deve enviar.',
-          isCorrect: false,
-          feedback:
-            'Ainda há risco. Você ainda não confirmou a identidade da pessoa. Não realize nenhum pagamento antes de verificar se a situação é verdadeira.',
-        },
-        {
-          id: 'c',
-          text: 'Desliga e liga para o número que você já tem salvo do seu familiar.',
-          isCorrect: true,
-          feedback:
-            'Você identificou o golpe. Uma das formas mais seguras de verificar a situação é encerrar a ligação e entrar em contato com o familiar por um canal que você já conhece.',
-        },
-        {
-          id: 'd',
-          text: 'Pede para o suposto familiar mandar uma foto para confirmar.',
-          isCorrect: false,
-          feedback:
-            'Cuidado. Uma foto também pode ser manipulada ou gerada por inteligência artificial. Procure confirmar a situação por outro meio.',
-        },
-      ],
-    },
+    contact: { name: 'Biblioteca Central', address: 'biblioteca@universidade.example' },
+    subject: 'Renovação de empréstimo',
+    sentAt: '27/08/2026 - 09:15',
+    body: 'Olá,\n\nInformamos que o prazo de devolução do livro "Introdução à Segurança da Informação" foi renovado.\n\nA nova data prevista para devolução é 03/09/2026.\n\nCaso você não tenha solicitado essa renovação ou tenha alguma dúvida sobre o empréstimo, entre em contato diretamente com a Biblioteca Central.\n\nAtenciosamente,\nBiblioteca Central\nUniversidade',
+    isPhishing: false,
+    justification:
+      'A mensagem apresenta informações relacionadas a um serviço que o usuário utiliza e não solicita senha, código de autenticação ou dados pessoais. Também não existe uma pressão para que o usuário realize alguma ação imediatamente. O e-mail apenas informa a nova data de devolução e oferece um meio de contato caso exista algum problema.',
   },
   {
-    id: 'cena-03',
+    id: 'email-03',
     order: 3,
-    messages: [
-      {
-        sender: 'attacker',
-        content:
-          'Não desliga! Meu celular está quebrado. Se você ligar para o meu número, não vai conseguir falar comigo. Por favor, confia em mim, eu preciso desse dinheiro agora!',
-        delay: 600,
-      },
-    ],
-    decision: {
-      prompt: 'Qual é a melhor atitude?',
-      options: [
-        {
-          id: 'a',
-          text: 'Confiar na pessoa porque ela conhece informações sobre você.',
-          isCorrect: false,
-          feedback:
-            'Cuidado. Saber informações sobre você não prova identidade. Esses dados circulam em vazamentos e em perfis públicos, e são usados justamente para construir confiança falsa.',
-        },
-        {
-          id: 'b',
-          text: 'Continuar conversando até ter certeza de que é realmente seu familiar.',
-          isCorrect: false,
-          feedback:
-            'Ainda há risco. Quanto mais a conversa continua no canal que o golpista controla, mais tempo ele tem para aplicar pressão. A certeza não vai vir dessa ligação.',
-        },
-        {
-          id: 'c',
-          text: 'Encerrar a ligação e procurar confirmar a situação pessoalmente ou por outro contato conhecido.',
-          isCorrect: true,
-          feedback:
-            'Você identificou os sinais. Mudar para um canal que você mesmo escolhe é o que tira o controle das mãos do golpista.',
-        },
-        {
-          id: 'd',
-          text: 'Fazer metade do PIX e esperar para ver o que acontece.',
-          isCorrect: false,
-          feedback:
-            'Você caiu no golpe. Transferir qualquer valor confirma para o criminoso que você é um alvo que responde, e o dinheiro enviado dificilmente é recuperado.',
-        },
-      ],
+    contact: { name: 'Departamento de Recursos Humanos', address: 'rh@empresa-seg.example' },
+    subject: 'Documento referente ao projeto',
+    sentAt: '27/08/2026 - 10:03',
+    body: 'Olá, {nome}.\n\nConforme conversamos anteriormente sobre o projeto de segurança da informação, estou enviando o documento solicitado para sua análise.\n\nO arquivo contém as informações que discutimos durante nossa última reunião.\n\nVocê pode acessá-lo através do link abaixo:\n\n[ABRIR DOCUMENTO]\n\nCaso tenha alguma dificuldade para acessar o arquivo, me avise.\n\nAtenciosamente,\nMarcos\nDepartamento de Recursos Humanos',
+    isPhishing: true,
+    justification:
+      'A mensagem utiliza informações específicas sobre o destinatário, incluindo seu nome e uma referência a um projeto, para criar uma sensação de familiaridade. Isso pode fazer com que o usuário confie na mensagem e clique no link sem verificar sua origem. O fato de a mensagem conhecer informações reais sobre o usuário não significa que ela seja legítima. Este tipo de ataque demonstra como informações disponíveis sobre uma pessoa podem ser utilizadas para tornar um golpe mais convincente.',
+  },
+  {
+    id: 'email-04',
+    order: 4,
+    contact: { name: 'Loja Mercado', address: 'pedidos@lojamercado.example' },
+    subject: 'Seu pedido foi entregue',
+    sentAt: '27/08/2026 - 14:27',
+    body: 'Olá!\n\nSeu pedido foi marcado como entregue hoje.\n\nNúmero do pedido: #45821\n\nA entrega foi realizada no endereço cadastrado durante a compra.\n\nCaso você não tenha recebido o pedido, acesse o aplicativo ou site oficial da Loja Mercado para consultar os detalhes da entrega.\n\nObrigado por comprar conosco.\nEquipe Loja Mercado',
+    isPhishing: false,
+    justification:
+      'O e-mail fornece uma informação relacionada a uma compra e não exige que o usuário forneça senha, código de autenticação ou informações bancárias. Um ponto importante é que a mensagem orienta o usuário a acessar o aplicativo ou site oficial diretamente, em vez de fornecer um link suspeito. Mesmo assim, o usuário ainda deve verificar se realmente realizou aquela compra antes de considerar a mensagem confiável.',
+  },
+  {
+    id: 'email-05',
+    order: 5,
+    contact: {
+      name: 'Segurança da Conta',
+      address: 'seguranca@servicos-online-seguranca.example',
     },
+    subject: 'Nova tentativa de acesso detectada',
+    sentAt: '27/08/2026 - 17:51',
+    body: 'Olá,\n\nUma nova tentativa de acesso à sua conta foi identificada.\n\nData: 27/08/2026\nHorário: 17:43\nLocalização: São Paulo, Brasil\n\nSe você não reconhece esta atividade, confirme sua identidade imediatamente através do nosso contato de e-mail para podermos lhe enviar o link de segurança.\n\nPor motivos de segurança, sua conta poderá ser temporariamente limitada caso a confirmação não seja realizada.\n\nAtenciosamente,\nEquipe de Segurança',
+    isPhishing: true,
+    justification:
+      'Apesar de utilizar uma linguagem profissional e não apresentar erros evidentes de português, este e-mail tenta criar preocupação sobre uma possível invasão da conta e utiliza isso para induzir o usuário a enviar seus dados em privado. O endereço também utiliza um domínio diferente do serviço que supostamente representa. Além disso, serviços de segurança nunca pedem conversas em privado, pois é sempre o usuário quem deve confirmar a entrada de acesso. Este é um exemplo importante porque demonstra que um phishing pode ser bem escrito, profissional e convincente, sem utilizar táticas como links diretos.',
   },
 ]
 
-export const SIMULATION_02_ID = 'simulacao-02'
+const SIMULATION_MODULO_02_ID = 'simulacao-modulo-02'
 
-export const simulation02: SimulationDocument = {
-  id: SIMULATION_02_ID,
-  moduleId: MODULE_03_ID,
-  title: 'Você recebeu uma ligação',
-  description: 'Você está em casa quando recebe uma ligação.',
-  format: 'call',
-  contact: { name: 'Número desconhecido', address: '(00) 90000-0002' },
+export const simulationModulo02: SimulationDocument = {
+  id: SIMULATION_MODULO_02_ID,
+  moduleId: MODULE_02_ID,
+  title: 'Detecte o Phishing',
+  description:
+    'Você recebeu 5 novos e-mails em sua caixa de entrada. Alguns são mensagens legítimas, outros foram criados para tentar enganar você. Abra cada mensagem, analise cuidadosamente as informações disponíveis e decida se é PHISHING ou NORMAL.\n\nNão escolha apenas pela aparência da mensagem, observe o remetente, o conteúdo, os links, os pedidos realizados e principalmente se existe algum motivo para desconfiar.',
+  format: 'email',
+  // Cada email tem remetente próprio; esse só aparece se uma cena vier sem contact.
+  contact: { name: 'Caixa de entrada', address: 'caixa@email.example' },
   estimatedMinutes: 10,
-  scenes,
-  conclusion: [
-    {
-      type: 'text',
-      content: 'Nesse caso, vários elementos indicam uma possível tentativa de golpe:',
-    },
-    {
-      type: 'list',
-      ordered: false,
-      items: [
-        'A pessoa afirma estar em uma situação de emergência.',
-        'Existe uma tentativa de criar pressa.',
-        'Ela solicita uma transferência de dinheiro.',
-        'Tenta impedir que você confirme sua identidade por outro meio.',
-        'A voz familiar pode ter sido clonada por inteligência artificial.',
-      ],
-    },
-    {
-      type: 'highlight',
-      variant: 'info',
-      content: 'Lembre-se: uma voz familiar não é necessariamente uma prova de identidade.',
-    },
-  ],
+  scenes: emails.map(toScene),
 }

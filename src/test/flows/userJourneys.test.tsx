@@ -63,7 +63,7 @@ function seedTrail() {
         buildLesson({ id: 'licao-01', title: 'Lição do segundo', readingTimeSeconds: 0 }),
       ],
     },
-    simulations: [buildSimulation({ id: 'simulacao-01', moduleId: 'modulo-01' })],
+    simulations: [buildSimulation({ moduleId: 'modulo-01' })],
   })
 }
 
@@ -188,7 +188,7 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
     // Sem a simulação o módulo ainda não fecha.
     expect(fakeBackend.getProgress(uid, 'modulo-01')?.completedAt).toBeNull()
 
-    await router.navigate('/simulacoes/simulacao-01')
+    await router.navigate('/simulacoes/simulacao-modulo-01')
     await user.click(await screen.findByRole('button', { name: 'Começar simulação' }, FLOW_TIMEOUT))
     await user.click(await screen.findByRole('button', { name: 'Opção A' }))
     await user.click(await screen.findByRole('button', { name: 'Opção A' }))

@@ -45,6 +45,18 @@ async function seedSimulation(db: Firestore, simulation: SimulationDocument): Pr
   console.log(`  simulação "${simulation.id}" gravada`)
 }
 
+// Sem isso, renomear uma simulação em src/content deixa a antiga no banco e ela aparece duplicada na listagem.
+async function removeStaleSimulations(db: Firestore): Promise<void> {
+  const currentIds = new Set(CONTENT_SIMULATIONS.map((simulation) => simulation.id))
+  const refs = await db.collection('simulations').listDocuments()
+
+  for (const ref of refs) {
+    if (currentIds.has(ref.id)) continue
+    await ref.delete()
+    console.log(`  simulação "${ref.id}" removida, não existe mais em src/content`)
+  }
+}
+
 async function main(): Promise<void> {
   const errors = validateContent(CONTENT_MODULES, CONTENT_SIMULATIONS)
   if (errors.length > 0) {
@@ -73,6 +85,7 @@ async function main(): Promise<void> {
   for (const simulation of CONTENT_SIMULATIONS) {
     await seedSimulation(db, simulation)
   }
+  await removeStaleSimulations(db)
   console.log('Seed concluído.')
 }
 

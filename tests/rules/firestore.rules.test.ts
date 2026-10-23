@@ -574,12 +574,12 @@ describe('quizResults', () => {
 describe('conteúdo', () => {
   it('deixa usuário logado ler módulos, lições e simulações', async () => {
     await seed('modules/modulo-01/lessons/licao-01', { title: 'Lição' })
-    await seed('simulations/simulacao-01', { title: 'Simulação' })
+    await seed('simulations/simulacao-modulo-02', { title: 'Simulação' })
     const db = dbAs(ALICE)
 
     await assertSucceeds(getDoc(doc(db, 'modules/modulo-01')))
     await assertSucceeds(getDoc(doc(db, 'modules/modulo-01/lessons/licao-01')))
-    await assertSucceeds(getDoc(doc(db, 'simulations/simulacao-01')))
+    await assertSucceeds(getDoc(doc(db, 'simulations/simulacao-modulo-02')))
   })
 
   it('bloqueia leitura de conteúdo sem login', async () => {

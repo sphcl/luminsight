@@ -142,7 +142,7 @@ function ModuleView({
               to={buildQuizRoute(module.id)}
               className="rounded-card border border-rule bg-surface p-4 transition-colors hover:border-strong motion-reduce:transition-none"
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <span className="text-lg font-semibold text-ink">Quiz do módulo</span>
                 {quizBestScore !== null && (
                   <Badge variant={quizBestScore >= QUIZ_PASSING_SCORE ? 'success' : 'warning'}>
@@ -168,7 +168,7 @@ function ModuleView({
               to={ROUTES.SIMULACOES}
               className="rounded-card border border-rule bg-surface p-4 transition-colors hover:border-strong motion-reduce:transition-none"
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <span className="text-lg font-semibold text-ink">Simulação</span>
                 {progress?.simulationCompleted && <Badge variant="success">Concluída</Badge>}
               </div>
@@ -197,7 +197,7 @@ function UnavailableActivity({
       aria-disabled="true"
       className="rounded-card border border-dashed border-rule bg-surface-muted p-4"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="text-lg font-semibold text-ink-soft">{title}</span>
         <Badge>{badge}</Badge>
       </div>

@@ -2,7 +2,11 @@ import { Link } from 'react-router-dom'
 import { Badge, Card, Skeleton } from '@/components/ui'
 import { ROUTES, buildSimulationRoute } from '@/constants/routes'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
-import { formatMinutes } from '@/features/modules/labels'
+import {
+  formatMinutes,
+  formatModuleLabel,
+  formatUnlockRequirement,
+} from '@/features/modules/labels'
 import {
   useSimulations,
   type SimulationWithStatus,
@@ -66,7 +70,7 @@ export function Simulacoes() {
 }
 
 function SimulationCard({ item }: { item: SimulationWithStatus }) {
-  const { simulation, module, status } = item
+  const { simulation, module, status, unlockRequirement } = item
   const isLocked = status === 'locked'
   // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
   const statusBadge = SIMULATION_STATUS_BADGES[status]
@@ -76,6 +80,7 @@ function SimulationCard({ item }: { item: SimulationWithStatus }) {
       interactive={!isLocked}
       className={cn('flex flex-col gap-3', isLocked && 'cursor-not-allowed opacity-60')}
     >
+      <p className="eyebrow">{formatModuleLabel(module)}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
         <Badge>{FORMAT_LABELS[simulation.format]}</Badge>
@@ -85,11 +90,9 @@ function SimulationCard({ item }: { item: SimulationWithStatus }) {
         <h2 className="font-serif text-2xl font-normal text-ink">{simulation.title}</h2>
         <p className="mt-1 text-sm text-ink-soft">{simulation.description}</p>
       </div>
-      <p className="text-sm text-ink-muted">
-        {isLocked
-          ? `Libera quando o módulo "${module.title}" for desbloqueado.`
-          : `Módulo: ${module.title}`}
-      </p>
+      {isLocked && unlockRequirement && (
+        <p className="text-sm text-ink-muted">{formatUnlockRequirement(unlockRequirement)}</p>
+      )}
     </Card>
   )
 
