@@ -1,12 +1,48 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
+
+// npm run analyze liga o mapa do bundle; no build normal ele não roda.
+const analyze = process.env.ANALYZE === 'true'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    analyze &&
+      visualizer({
+        filename: 'bundle-stats/stats.html',
+        template: 'treemap',
+        gzipSize: true,
+      }),
+    analyze &&
+      visualizer({ filename: 'bundle-stats/stats.json', template: 'raw-data', gzipSize: true }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
+    },
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Dependência muda bem menos que o app, então separo pra o navegador reaproveitar entre deploys.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+              priority: 30,
+            },
+            {
+              name: 'firebase',
+              test: /node_modules[\\/](firebase|@firebase|idb|re2js)[\\/]/,
+              priority: 20,
+            },
+            { name: 'vendor', test: /node_modules[\\/]/, priority: 10 },
+          ],
+        },
+      },
     },
   },
   test: {
