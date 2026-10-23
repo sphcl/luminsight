@@ -52,6 +52,8 @@ npm run dev
 
 Veja o arquivo `.env.example` para as variáveis necessárias.
 
+O projeto usa um único Firebase para desenvolvimento e produção; os riscos disso e a política das chaves `VITE_` estão em `docs/seguranca.md`, seção 9.
+
 ## Seed do Firestore
 
 Os módulos e lições ficam no Firestore (não no bundle) para poderem ser atualizados sem um novo deploy. `npm run seed` popula essas coleções a partir do conteúdo em `src/content/`, usando o **Firebase Admin SDK** (que ignora as `firestore.rules` publicadas), então precisa de uma credencial de administrador do projeto, não das chaves do `.env`.

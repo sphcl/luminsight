@@ -1,10 +1,13 @@
 name: CI
 
+# PR entra pelo pull-request.yml e a main pelo deploy.yml, os dois chamam este aqui; assim não roda duas vezes.
 on:
   push:
-    branches: [develop, main]
-  pull_request:
-    branches: [main]
+    branches: [develop]
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   ci:
@@ -13,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout do código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Instalar dependências
@@ -39,7 +42,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Configurar Java (emulador do Firestore)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -47,5 +50,21 @@ jobs:
       - name: Testes das Firestore Rules
         run: npm run test:rules
 
+      # O Vite cola essas variáveis no JS na hora do build; são públicas, ver docs/seguranca.md seção 9.1.
       - name: Build de produção
         run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+      # O deploy publica exatamente este dist, o que passou pelos testes, em vez de buildar de novo.
+      - name: Guardar o build
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 1

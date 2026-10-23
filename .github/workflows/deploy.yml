@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  deploy:
+    name: Deploy em produção
+    needs: ci
+    runs-on: ubuntu-latest
+    # O environment segura o job até alguém aprovar e só ele enxerga a credencial de produção.
+    environment:
+      name: production
+      url: https://luminsight-8a8dc.web.app
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v7
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Baixar o build testado
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      # Fora do workspace pra credencial não cair em nenhum artifact por acidente.
+      - name: Gravar credencial da conta de serviço
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/service-account.json" >> "$GITHUB_ENV"
+
+      # Rules antes do site: se a publicação delas falhar, o código novo não vai ao ar dependendo de regra velha.
+      - name: Publicar Firestore Rules e índices
+        run: npx --yes firebase-tools@15.33.0 deploy --only firestore --project luminsight-8a8dc --non-interactive
+
+      - name: Publicar no Hosting
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+          projectId: luminsight-8a8dc
+          channelId: live
+          firebaseToolsVersion: 15.33.0
+
+      - name: Apagar credencial
+        if: always()
+        run: rm -f "$RUNNER_TEMP/service-account.json"

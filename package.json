@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "analyze": "ANALYZE=true vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
@@ -52,6 +53,7 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.23",
     "prettier": "^3.9.6",
+    "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.13",
     "typescript": "~6.0.2",

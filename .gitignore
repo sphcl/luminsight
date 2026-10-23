@@ -42,3 +42,5 @@ npm-debug.log*
 # Build info incremental do TypeScript (específico da máquina/checkout), não
 # deveria ter sido commitado (estava rastreado desde o commit inicial)
 *.tsbuildinfo
+# Mapa do bundle gerado por npm run analyze
+bundle-stats

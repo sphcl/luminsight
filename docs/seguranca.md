@@ -598,7 +598,87 @@ com a régua neutra no claro e 5,10:1 no escuro, além do próprio controle marc
 - **Movimento reduzido.** Animações de entrada, a troca de tema e a régua de conclusão de módulo não
   acontecem quando o sistema pede menos movimento (`prefers-reduced-motion`).
 
-## 9. Resumo do que ficou de fora
+## 9. Deploy e configuração do projeto Firebase
+
+### 9.1 As chaves `VITE_FIREBASE_*` são públicas
+
+As seis variáveis do `.env` (`apiKey`, `authDomain`, `projectId`, `storageBucket`,
+`messagingSenderId`, `appId`) identificam o projeto Firebase, não autenticam ninguém. O Vite as
+copia para dentro do JavaScript no momento do build, então qualquer pessoa que abrir o site consegue
+lê-las nas ferramentas de desenvolvedor do navegador. Isso é o funcionamento esperado do Firebase:
+o SDK precisa delas no navegador para saber com qual projeto falar.
+
+A segurança dos dados não depende de esconder essas chaves. Ela vem de duas camadas que ficam no
+servidor do Google, fora do alcance de quem tem as chaves:
+
+- **Firebase Authentication**, que só emite token para quem provou a identidade (senha ou Google);
+- **Firestore Security Rules** (seção 2), que decidem, documento por documento, o que cada token
+  pode ler e gravar.
+
+Quem tiver as chaves consegue, no máximo, fazer o que o próprio site já faz: criar uma conta e
+mexer só nos próprios dados.
+
+No CI as chaves ficam em GitHub Secrets e são injetadas apenas no passo de build. Isso é higiene de
+repositório, não proteção criptográfica: evita que o histórico do git carregue configuração de
+ambiente e deixa trocar de projeto sem commit. O valor protegido de verdade nos Secrets é a
+credencial das contas de serviço (seção 9.2), essa sim um segredo.
+
+### 9.2 Contas de serviço do pipeline
+
+O deploy não usa o token do `firebase login:ci`, que está obsoleto, não expira e carrega o acesso
+da conta pessoal de quem o gerou. Em vez dele, o pipeline usa duas contas de serviço, cada uma com
+o mínimo que o seu trabalho exige:
+
+| Conta | Usada em | Papéis |
+| --- | --- | --- |
+| `github-deploy-preview` | Canal `staging`, a cada pull request | Firebase Hosting Admin, Service Usage Consumer |
+| `github-deploy-prod` | Site no ar, rules e índices, a cada push na `main` | Firebase Hosting Admin, Firebase Rules Admin, Cloud Datastore Index Admin, Service Usage Consumer |
+
+Nenhuma das duas tem papel de Editor, Proprietário ou Administrador do Firebase, nem acesso aos
+dados do Firestore. A separação existe porque o preview publica código de qualquer branch aberta
+em PR: se ele usasse a credencial de produção, um PR conseguiria publicar rules.
+
+O job de produção roda no GitHub Environment `production`, que exige aprovação manual de um
+revisor e só aceita a branch `main`. A credencial de produção fica nos secrets desse environment,
+então nenhum outro job do repositório consegue lê-la. No runner, o JSON é gravado fora do diretório
+de trabalho e apagado ao final do job.
+
+### 9.3 Rules publicadas pelo pipeline
+
+Até a fase 13, as rules eram coladas à mão no console do Firebase. Assim, o arquivo do repositório
+e o que estava em produção podiam divergir sem ninguém perceber, e não havia registro de quem
+publicou o quê. Agora o `firestore.rules` e o `firestore.indexes.json` são publicados pelo
+`deploy.yml`, sempre depois de os testes das rules passarem no emulador (seção 2.8). O repositório
+passou a ser a fonte única de verdade, e o histórico do git e o log do GitHub Actions registram
+cada publicação. Antes de ligar isso, as rules e os índices do console foram comparados com os
+arquivos do repositório e estavam idênticos.
+
+Publicar pelo console continua tecnicamente possível para quem tem acesso ao projeto, mas a próxima
+execução do pipeline sobrescreve a mudança.
+
+### 9.4 Desenvolvimento e produção no mesmo banco
+
+O projeto tem um único projeto Firebase (`luminsight-8a8dc`), então o Authentication e o
+Firestore usados durante o desenvolvimento são os mesmos do site no ar. Contas e documentos criados
+para testar ficam ao lado dos dados de usuários reais.
+
+Riscos dessa escolha:
+
+- um script de desenvolvimento com o Admin SDK (`npm run seed`, `npm run dev:complete-modules`)
+  roda contra os dados de produção, sem ambiente intermediário;
+- resíduo de teste (contas, progresso, resultados de quiz) se mistura com dados reais e precisa ser
+  limpo à mão;
+- uma rule nova só é testada contra o emulador antes de ir para o banco real.
+
+O que reduz esses riscos: as rules são testadas no emulador no CI antes de cada deploy, os scripts
+de Admin SDK não fazem parte do bundle (seção 4) e exigem a credencial de administrador, que fica
+fora do repositório, e o resíduo de teste é revisado antes do primeiro deploy.
+
+A solução completa seria um segundo projeto Firebase só para desenvolvimento, com o pipeline
+apontando cada branch para o seu projeto. Para um TCC com poucos usuários, o custo de manter dois
+projetos, dois conjuntos de credenciais e dois seeds não compensa, e a escolha fica registrada aqui.
+
+## 10. Resumo do que ficou de fora
 
 | Item | Motivo | Caminho para resolver |
 | --- | --- | --- |
@@ -608,3 +688,4 @@ com a régua neutra no claro e 5,10:1 no escuro, além do próprio controle marc
 | Verificação de email e dois fatores | Fora do escopo do TCC | Recursos nativos do Firebase Auth |
 | Registro de eventos de segurança | Exige processamento no servidor | Cloud Functions e Cloud Logging |
 | Subresource Integrity no Google Fonts | CSS gerado dinamicamente pelo Google | Hospedar a fonte no próprio domínio |
+| Desenvolvimento e produção no mesmo banco | Custo de manter dois projetos Firebase | Projeto separado para desenvolvimento |
