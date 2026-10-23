@@ -25,9 +25,9 @@ describe('Simulacoes', () => {
     })
     vi.mocked(getModules).mockResolvedValue(buildTrail())
     vi.mocked(getSimulations).mockResolvedValue([
-      buildSimulation({ id: 'simulacao-02', moduleId: 'modulo-02', title: 'Segunda' }),
-      buildSimulation({ id: 'simulacao-01', moduleId: 'modulo-01', title: 'Primeira' }),
-      buildSimulation({ id: 'simulacao-x', moduleId: 'modulo-inativo', title: 'Sem módulo' }),
+      buildSimulation({ moduleId: 'modulo-02', title: 'Segunda' }),
+      buildSimulation({ moduleId: 'modulo-01', title: 'Primeira' }),
+      buildSimulation({ moduleId: 'modulo-inativo', title: 'Sem módulo' }),
     ])
     vi.mocked(getUserProgress).mockResolvedValue({
       'modulo-01': buildProgress({ simulationCompleted: true }),
@@ -45,12 +45,15 @@ describe('Simulacoes', () => {
       </MemoryRouter>
     )
 
-    const first = await screen.findByTestId('simulation-card-simulacao-01')
-    const second = screen.getByTestId('simulation-card-simulacao-02')
+    const first = await screen.findByTestId('simulation-card-simulacao-modulo-01')
+    const second = screen.getByTestId('simulation-card-simulacao-modulo-02')
 
     expect(within(first).getByText('Concluída')).toBeInTheDocument()
-    expect(first.closest('a')).toHaveAttribute('href', '/simulacoes/simulacao-01')
+    expect(first.closest('a')).toHaveAttribute('href', '/simulacoes/simulacao-modulo-01')
     expect(within(second).getByText('Bloqueada')).toBeInTheDocument()
+    expect(within(first).getByText('Módulo 1 · Módulo 1')).toBeInTheDocument()
+    expect(within(second).getByText('Módulo 2 · Módulo 2')).toBeInTheDocument()
+    expect(within(second).getByText('Faltam 2 lições e o quiz do Módulo 1.')).toBeInTheDocument()
     expect(second).toHaveAttribute('aria-disabled', 'true')
     expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByText('Sem módulo')).not.toBeInTheDocument()

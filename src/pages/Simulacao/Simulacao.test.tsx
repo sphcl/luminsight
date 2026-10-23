@@ -24,7 +24,7 @@ vi.mock('@/services/progress.service', () => ({
   markModuleCompleted: vi.fn(),
 }))
 
-function renderSimulacao(simulationId = 'simulacao-01') {
+function renderSimulacao(simulationId = 'simulacao-modulo-01') {
   return render(
     <MemoryRouter initialEntries={[`/simulacoes/${simulationId}`]}>
       <Routes>

@@ -158,6 +158,12 @@ export function validateContent(
   }
 
   for (const simulation of simulations) {
+    // O número no id é o do módulo; simulacao-01 sendo do módulo 2 já confundiu gente de verdade.
+    const expectedId = `simulacao-${simulation.moduleId}`
+    if (simulation.id !== expectedId) {
+      errors.push(`Simulação "${simulation.id}": o id precisa ser "${expectedId}".`)
+    }
+
     const contacts = [
       simulation.contact,
       ...simulation.scenes.flatMap((scene) => scene.contact ?? []),

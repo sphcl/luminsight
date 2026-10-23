@@ -37,9 +37,10 @@ export function buildScene(
 }
 
 export function buildSimulation(overrides: Partial<SimulationDocument> = {}): SimulationDocument {
+  const moduleId = overrides.moduleId ?? 'modulo-01'
   return {
-    id: 'simulacao-01',
-    moduleId: 'modulo-01',
+    id: `simulacao-${moduleId}`,
+    moduleId,
     title: 'Simulação de teste',
     description: 'Descrição da simulação',
     format: 'chat',

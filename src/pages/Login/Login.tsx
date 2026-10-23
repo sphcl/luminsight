@@ -1,9 +1,12 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { textLinkClass } from '@/components/ui/linkStyles'
+import { ROUTES } from '@/constants/routes'
 import { LoginForm } from '@/features/auth'
 import { useRedirectTarget } from '@/lib/router/useRedirectTarget'
 
 export function Login() {
   const navigate = useNavigate()
+  const { search } = useLocation()
   const redirectTarget = useRedirectTarget()
 
   return (
@@ -14,6 +17,14 @@ export function Login() {
       </div>
 
       <LoginForm onSuccess={() => navigate(redirectTarget, { replace: true })} />
+
+      {/* Levo o ?redirect= junto pra quem trocar de tela no meio não perder pra onde ia voltar. */}
+      <p className="text-center text-sm text-ink-soft">
+        Ainda não tem conta?{' '}
+        <Link to={{ pathname: ROUTES.REGISTER, search }} className={textLinkClass}>
+          Criar conta
+        </Link>
+      </p>
     </div>
   )
 }

@@ -16,7 +16,7 @@ interface FieldErrors {
 }
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
-  const { register, isLoading, error } = useAuthActions()
+  const { register, signInWithGoogle, isLoading, error } = useAuthActions()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -53,6 +53,14 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
     setFieldErrors({})
     const success = await register(result.data.displayName, result.data.email, result.data.password)
+    if (success) {
+      onSuccess?.()
+    }
+  }
+
+  // Conta Google nova é criada no primeiro login, então o mesmo botão do login serve aqui.
+  async function handleGoogleClick() {
+    const success = await signInWithGoogle()
     if (success) {
       onSuccess?.()
     }
@@ -105,6 +113,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
       <Button type="submit" isLoading={isLoading} fullWidth>
         Criar conta
+      </Button>
+
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void handleGoogleClick()}
+        disabled={isLoading}
+        fullWidth
+      >
+        Entrar com Google
       </Button>
     </form>
   )
