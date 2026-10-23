@@ -5,12 +5,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { Login } from './Login'
 import { Register } from '../Register/Register'
 
-vi.mock('@/services/auth.service', () => ({
-  loginWithEmail: vi.fn(),
-  loginWithGoogle: vi.fn(),
-  registerWithEmail: vi.fn(),
-  logout: vi.fn(),
-}))
+// As páginas importam o barrel de auth, que puxa o AuthProvider e inicializaria o Firebase de verdade; no CI não tem chave.
+vi.mock('@/lib/firebase', () => ({ auth: {} }))
 
 function renderAt(path: string, page: ReactElement) {
   return render(<MemoryRouter initialEntries={[path]}>{page}</MemoryRouter>)
