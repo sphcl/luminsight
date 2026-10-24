@@ -43,6 +43,9 @@ const Simulacao = lazy(() =>
   import('@/pages/Simulacao').then((module) => ({ default: module.Simulacao }))
 )
 const Perfil = lazy(() => import('@/pages/Perfil').then((module) => ({ default: module.Perfil })))
+const Encerramento = lazy(() =>
+  import('@/pages/Encerramento').then((module) => ({ default: module.Encerramento }))
+)
 const NotFound = lazy(() =>
   import('@/pages/NotFound').then((module) => ({ default: module.NotFound }))
 )
@@ -133,6 +136,11 @@ export const routes: RouteObject[] = [
                 path: ROUTES.PERFIL,
                 handle: { title: 'Perfil' },
                 element: withSuspense(<Perfil />),
+              },
+              {
+                path: ROUTES.ENCERRAMENTO,
+                handle: { title: 'Encerramento' },
+                element: withSuspense(<Encerramento />),
               },
             ],
           },

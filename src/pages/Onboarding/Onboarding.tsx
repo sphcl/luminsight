@@ -1,68 +1,92 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ZodError } from 'zod'
 import { Button, Card, ProgressBar } from '@/components/ui'
 import { ROUTES } from '@/constants/routes'
+import { CONSENT_TEXTS } from '@/content/research'
 import { useAuth } from '@/hooks/useAuth'
 import {
   MOTIVATION_OPTIONS,
   SCAM_EXPERIENCE_OPTIONS,
   SECURITY_KNOWLEDGE_OPTIONS,
 } from '@/features/onboarding/schemas/onboarding.schema'
+import { ChoiceQuestion } from '@/features/research/components/ChoiceQuestion'
+import { reportResearchFailure } from '@/features/research/reportResearchFailure'
+import { ConsentForm, type ConsentChoice } from '@/features/research/components/ConsentForm'
+import {
+  RISK_PERCEPTION_OPTIONS,
+  RISK_PERCEPTION_QUESTION,
+} from '@/features/research/schemas/research.schema'
 import { completeOnboarding } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
-import { mapFirestoreError } from '@/utils/security/errors'
 import { cn } from '@/utils/helpers/classnames'
-import type { OnboardingProfile } from '@/types/user.types'
+import type { OnboardingProfile, RiskPerception } from '@/types/user.types'
 
-type Answers = { [K in keyof OnboardingProfile]: OnboardingProfile[K] | null }
-
-interface Step<K extends keyof OnboardingProfile> {
-  field: K
-  question: string
-  options: { value: OnboardingProfile[K]; label: string }[]
+interface Answers {
+  securityKnowledge: OnboardingProfile['securityKnowledge'] | null
+  riskPerception: RiskPerception | null
+  scamExperience: OnboardingProfile['scamExperience'] | null
+  motivation: OnboardingProfile['motivation'] | null
 }
 
-type AnyStep = { [K in keyof OnboardingProfile]: Step<K> }[keyof OnboardingProfile]
+type QuestionField = keyof Answers
 
-const STEPS: [AnyStep, ...AnyStep[]] = [
-  {
-    field: 'securityKnowledge',
-    question: 'Qual seu nível de conhecimento sobre segurança digital?',
-    options: SECURITY_KNOWLEDGE_OPTIONS,
-  },
-  {
-    field: 'scamExperience',
-    question: 'Você ou alguém próximo já caiu em um golpe digital?',
-    options: SCAM_EXPERIENCE_OPTIONS,
-  },
-  {
-    field: 'motivation',
-    question: 'O que te trouxe aqui?',
-    options: MOTIVATION_OPTIONS,
-  },
-]
+interface Question<K extends QuestionField> {
+  field: K
+  question: string
+  options: { value: NonNullable<Answers[K]>; label: string }[]
+}
 
-const EMPTY_ANSWERS: Answers = { securityKnowledge: null, scamExperience: null, motivation: null }
+type AnyQuestion = { [K in QuestionField]: Question<K> }[QuestionField]
 
-const optionClass =
-  'flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-[3px] border-b-rule border-l-transparent py-3 pl-4 pr-3 text-ink transition-colors hover:bg-surface-muted motion-reduce:transition-none has-[:checked]:border-l-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent'
+const KNOWLEDGE: AnyQuestion = {
+  field: 'securityKnowledge',
+  question: 'Qual seu nível de conhecimento sobre segurança digital?',
+  options: SECURITY_KNOWLEDGE_OPTIONS,
+}
+const RISK: AnyQuestion = {
+  field: 'riskPerception',
+  question: RISK_PERCEPTION_QUESTION,
+  options: RISK_PERCEPTION_OPTIONS,
+}
+const SCAM: AnyQuestion = {
+  field: 'scamExperience',
+  question: 'Você ou alguém próximo já caiu em um golpe digital?',
+  options: SCAM_EXPERIENCE_OPTIONS,
+}
+const MOTIVATION: AnyQuestion = {
+  field: 'motivation',
+  question: 'O que te trouxe aqui?',
+  options: MOTIVATION_OPTIONS,
+}
+
+const EMPTY_ANSWERS: Answers = {
+  securityKnowledge: null,
+  riskPerception: null,
+  scamExperience: null,
+  motivation: null,
+}
 
 export function Onboarding() {
   const { user, userDocument } = useAuth()
   const setUserDocument = useAuthStore((state) => state.setUserDocument)
   const navigate = useNavigate()
+  // Passo 0 é o aviso da pesquisa; as perguntas começam no 1.
   const [stepIndex, setStepIndex] = useState(0)
+  const [consent, setConsent] = useState<ConsentChoice>({ isAdult: false, accepted: false })
   const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // eslint-disable-next-line security/detect-object-injection -- índice numérico controlado pelo componente
-  const step = STEPS[stepIndex] ?? STEPS[0]
-  const isLastStep = stepIndex === STEPS.length - 1
-  const currentAnswer = answers[step.field]
-  const allAnswered = Object.values(answers).every((answer) => answer !== null)
-  const canAdvance = isLastStep ? allAnswered : currentAnswer !== null
+  // Percepção de risco é dado só da pesquisa: quem não aceitou nem vê a pergunta.
+  const questions = consent.accepted
+    ? [KNOWLEDGE, RISK, SCAM, MOTIVATION]
+    : [KNOWLEDGE, SCAM, MOTIVATION]
+  const totalSteps = questions.length + 1
+  const question = stepIndex > 0 ? questions[stepIndex - 1] : undefined
+  const isLastStep = stepIndex === totalSteps - 1
+  // eslint-disable-next-line security/detect-object-injection -- chave restrita por union type
+  const allAnswered = questions.every(({ field }) => answers[field] !== null)
+  const canAdvance = !question || (isLastStep ? allAnswered : answers[question.field] !== null)
 
   async function handleFinish() {
     if (!user || !allAnswered) return
@@ -70,53 +94,61 @@ export function Onboarding() {
     setIsSaving(true)
     setError(null)
     try {
-      const profile = await completeOnboarding(user.uid, answers)
+      const fields = await completeOnboarding(
+        user.uid,
+        {
+          securityKnowledge: answers.securityKnowledge,
+          scamExperience: answers.scamExperience,
+          motivation: answers.motivation,
+        },
+        {
+          ...consent,
+          ...(consent.accepted ? { riskPerception: answers.riskPerception } : {}),
+        }
+      )
 
       if (userDocument) {
-        setUserDocument({ ...userDocument, onboardingCompleted: true, onboardingProfile: profile })
+        setUserDocument({ ...userDocument, onboardingCompleted: true, ...fields })
       }
       navigate(ROUTES.DASHBOARD, { replace: true })
     } catch (caughtError) {
-      if (caughtError instanceof ZodError) {
-        setError('Revise suas respostas e tente de novo.')
-      } else {
-        mapFirestoreError(caughtError)
-        setError('Não foi possível salvar suas respostas. Tente novamente.')
-      }
+      reportResearchFailure('onboarding com consentimento', caughtError)
+      setError(
+        'Não conseguimos salvar suas respostas agora. Elas continuam aqui; tente concluir de novo.'
+      )
       setIsSaving(false)
     }
   }
 
   return (
     <Card className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="page-title">Vamos te conhecer</h1>
-        <p className="text-sm text-ink-soft">
-          Três perguntas rápidas pra gente entender seu ponto de partida.
-        </p>
-        <ProgressBar
-          value={stepIndex + 1}
-          max={STEPS.length}
-          label={`Passo ${stepIndex + 1} de ${STEPS.length}`}
-        />
-      </div>
+      {question ? (
+        <div className="flex flex-col gap-2">
+          <h1 className="page-title">Vamos te conhecer</h1>
+          <p className="text-sm text-ink-soft">
+            Perguntas rápidas pra gente entender seu ponto de partida.
+          </p>
+        </div>
+      ) : (
+        <ConsentForm text={CONSENT_TEXTS['onboarding-v2']} value={consent} onChange={setConsent} />
+      )}
 
-      <fieldset key={step.field} className="flex flex-col gap-2">
-        <legend className="mb-3 font-semibold text-ink">{step.question}</legend>
-        {step.options.map((option) => (
-          <label key={option.value} className={optionClass}>
-            <input
-              type="radio"
-              name={step.field}
-              value={option.value}
-              checked={currentAnswer === option.value}
-              onChange={() => setAnswers((current) => ({ ...current, [step.field]: option.value }))}
-              className="accent-accent"
-            />
-            {option.label}
-          </label>
-        ))}
-      </fieldset>
+      <ProgressBar
+        value={stepIndex + 1}
+        max={totalSteps}
+        label={`Passo ${stepIndex + 1} de ${totalSteps}`}
+      />
+
+      {question && (
+        <ChoiceQuestion
+          key={question.field}
+          name={question.field}
+          question={question.question}
+          options={question.options}
+          value={answers[question.field]}
+          onChange={(value) => setAnswers((current) => ({ ...current, [question.field]: value }))}
+        />
+      )}
 
       {error && (
         <p role="alert" className="text-sm text-danger">

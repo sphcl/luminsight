@@ -15,7 +15,8 @@ serviços do Google:
 - **Firebase Authentication**: cadastro, login com email e senha, login com Google e emissão de
   tokens de sessão.
 - **Cloud Firestore**: banco de dados de documentos onde ficam o perfil do usuário, o progresso na
-  trilha, o histórico de quizzes e o conteúdo (módulos, lições e simulações).
+  trilha, o histórico de quizzes, o conteúdo (módulos, lições e simulações) e os dados da pesquisa
+  do TCC (decisões nas simulações e pesquisa final), estes só de quem consentiu.
 
 A consequência mais importante dessa arquitetura é que **todo código que roda no navegador está
 sob controle do usuário**. Qualquer validação feita em React pode ser contornada por quem abre o
@@ -34,6 +35,8 @@ delas.
 | Progresso e notas de quiz | Integridade do registro de aprendizado |
 | Conteúdo da trilha | Integridade do material didático |
 | Sessão do usuário | Quem obtém o token age como o usuário |
+| Dados da pesquisa (consentimento, decisões, pós-teste, comentário) | Dado de pessoa real usado num trabalho acadêmico, sob consentimento |
+| Credenciais das contas de serviço e chave da exportação | Quem tem a credencial publica rules; quem tem a chave desfaz a anonimização |
 
 ### 1.3 Atacantes considerados
 
@@ -70,12 +73,12 @@ infraestrutura do Google e ataques físicos ao dispositivo do usuário.
 | Pergunta | Resposta |
 | --- | --- |
 | Quem lê | Somente o próprio usuário (`request.auth.uid == userId`). |
-| Quem escreve | Somente o próprio usuário, em quatro operações fechadas: criação do documento, registro de login, conclusão do onboarding e troca de nome. Exclusão é sempre negada. |
+| Quem escreve | Somente o próprio usuário, em sete operações fechadas: criação do documento, registro de login, conclusão do onboarding (com a decisão sobre a pesquisa), troca de nome, decisão das contas antigas sobre a pesquisa, mudança de decisão pelo Perfil e dispensa do card da pesquisa final. Exclusão é sempre negada. |
 | O que impede agir em nome de outro | O `userId` do caminho tem que ser igual ao `uid` do token. Além disso, o email gravado na criação tem que ser o email do token (`request.auth.token.email`), então ninguém cria um documento com o email de outra pessoa. |
 | O que impede dado forjado | Na criação: `role` obrigatoriamente `'user'`, progresso zerado, datas do servidor, lista fechada de campos, nome com até 100 caracteres e foto somente `https://` com até 2048 caracteres. No update: cada operação só pode alterar os próprios campos (`diff().affectedKeys().hasOnly(...)`). O nome segue as mesmas regras do cadastro (2 a 60 letras, sem números nem símbolos). As respostas do onboarding precisam ser valores do enum e só podem ser gravadas uma vez. |
 
 **`role` imutável.** O update exige `request.resource.data.role == resource.data.role` em qualquer
-caminho e, além disso, nenhuma das três operações de update inclui `role` na lista de campos que
+caminho e, além disso, nenhuma das operações de update inclui `role` na lista de campos que
 podem mudar. São duas barreiras independentes.
 
 **Resposta sensível do onboarding.** A pergunta "você ou alguém próximo já caiu em um golpe
@@ -129,18 +132,31 @@ resultado de uma tentativa reprovada não pode ser reescrito como aprovado nem a
 | O que impede agir em nome de outro | Não se aplica: não há dado por usuário. |
 | O que impede dado forjado | Escrita bloqueada. Além disso, o aplicativo valida com Zod tudo o que lê do Firestore (`src/utils/security/firestore-validators.ts`) e descarta documentos fora do formato, então nem um erro no seed quebra a interface. |
 
-### 2.6 Checklist da auditoria
+### 2.6 Coleções da pesquisa: `simulationResults` e `trailFeedback`
+
+| Pergunta | Resposta |
+| --- | --- |
+| Quem lê | Somente o dono (`userId` igual ao `uid` do token; em `trailFeedback`, o id do documento é o próprio uid). |
+| Quem escreve | Somente o dono, e só se tiver consentido: a regra lê o documento do usuário e nega por padrão quando ele não existe ou não tem o campo de consentimento (seção 10.2). Alteração e exclusão são sempre negadas. |
+| O que impede agir em nome de outro | `userId` igual ao `uid` do token; em `trailFeedback`, o id do documento também tem que ser o uid. |
+| O que impede dado forjado | Lista fechada de campos e datas do servidor nas duas. Em `simulationResults`, a simulação precisa existir e o `moduleId` precisa ser o dela, acertos não passam do total e a lista de decisões tem o tamanho do total. Em `trailFeedback`, todas as respostas são enum, "Nada em especial" é exclusiva, não há opção repetida, o comentário tem até 500 caracteres, a resposta é única por pessoa e só é aceita depois de concluído o módulo final. |
+
+O que as rules não validam em `simulationResults` (o conteúdo de cada decisão e se ela estava
+certa) está na seção 10.4.
+
+### 2.7 Checklist da auditoria
 
 | Item verificado | Situação |
 | --- | --- |
-| Nenhuma coleção sem regra explícita | Atendido. As coleções usadas pelo app são `users`, `users/*/progress`, `modules`, `modules/*/lessons`, `simulations` e `quizResults`, todas com regra própria. |
+| Nenhuma coleção sem regra explícita | Atendido. As coleções usadas pelo app são `users`, `users/*/progress`, `modules`, `modules/*/lessons`, `simulations`, `quizResults`, `simulationResults` e `trailFeedback`, todas com regra própria. |
 | Catch-all final bloqueando tudo | Atendido. `match /{document=**} { allow read, write: if false; }`. |
 | `role` imutável em qualquer caminho de update | Atendido, com duas barreiras (seção 2.2). |
-| `quizResults` imutável depois de criado | Atendido. |
+| `quizResults`, `simulationResults` e `trailFeedback` imutáveis depois de criados | Atendido. |
+| Dado de pesquisa só com consentimento, negando por padrão | Atendido (seção 10.2). |
 | Validação de tipo e forma em toda escrita | Atendido em todas as coleções graváveis. |
-| `serverTimestamp` validado onde houver data | Atendido em `createdAt`, `lastLoginAt`, `startedAt`, `completedAt` (progresso e quiz) e `lastUpdatedAt`. |
+| `serverTimestamp` validado onde houver data | Atendido em `createdAt`, `lastLoginAt`, `startedAt`, `completedAt` (progresso, quiz e simulação), `lastUpdatedAt`, `decidedAt` (consentimento), `submittedAt` (pesquisa final) e `trailFeedbackDismissedAt`. |
 
-### 2.7 Problemas encontrados e corrigidos nesta fase
+### 2.8 Problemas encontrados e corrigidos na fase 11
 
 | Problema | Impacto | Correção |
 | --- | --- | --- |
@@ -151,7 +167,7 @@ resultado de uma tentativa reprovada não pode ser reescrito como aprovado nem a
 | Criação do usuário aceitava qualquer email | Documento com o email de outra pessoa | Email amarrado ao token |
 | Nome e foto sem limite na criação | Documentos inflados e URL arbitrária na foto | Limites de tamanho e `https://` obrigatório |
 
-### 2.8 Testes das rules
+### 2.9 Testes das rules
 
 Os testes ficam em `tests/rules/firestore.rules.test.ts` e rodam contra o **Firebase Emulator
 Suite**, que executa o mesmo motor de regras da produção, localmente. Cada teste é uma tentativa
@@ -170,7 +186,16 @@ Exemplos de ataques testados:
 - zerar tentativas, baixar a melhor nota, apagar lições, desmarcar a simulação;
 - marcar um módulo como concluído sem ter cumprido as etapas;
 - gravar texto livre na resposta sensível do onboarding;
-- escrever no conteúdo ou numa coleção que não existe nas rules.
+- escrever no conteúdo ou numa coleção que não existe nas rules;
+- concluir o onboarding sem decidir sobre a pesquisa, ou aceitar sem a declaração de 18 anos;
+- gravar percepção de risco sem ter aceitado, com valor fora da escala (inclusive um "média" que não
+  existe) ou marcar como coletada antes do uso a de uma conta antiga;
+- gravar resultado de simulação ou pesquisa final sem consentimento, sem o campo de consentimento ou
+  sem documento de usuário;
+- gravar resultado de simulação de outra pessoa, de simulação inexistente ou com módulo trocado;
+- responder a pesquisa final duas vezes, antes de concluir a trilha ou com comentário acima de 500
+  caracteres;
+- revogar o consentimento apagando a percepção de risco já gravada.
 
 Um teste registra de propósito a limitação da seção 4: ele confirma que o usuário **consegue**
 declarar nota 100 no próprio progresso. Esse teste existe para que a limitação fique documentada no
@@ -248,11 +273,17 @@ mesmo raciocínio vale para `script-src`: não há `'unsafe-inline'` nem `'unsaf
 
 **O que ficou de fora.**
 
-- O site é publicado em `https://luminsight-8a8dc.web.app`, sem domínio próprio, por decisão do
-  projeto de custar zero. Esse endereço está escrito nas tags `og:url`, `og:image` e
-  `twitter:image` do `index.html`, porque o preview de link exige URL absoluta. Se um dia o projeto
-  ganhar domínio próprio, essas tags precisam mudar junto, ou o preview quebra sem nenhum erro
-  visível.
+- O site é publicado em `https://luminsight-tcc.web.app`, sem domínio próprio, por decisão do
+  projeto de custar zero. É um segundo site do Hosting dentro do mesmo projeto (`"site"` no
+  `firebase.json`), porque `luminsight.web.app` pertence a outro projeto Firebase e o endereço
+  padrão carrega o sufixo do id do projeto. Esse endereço está escrito nas tags `og:url`,
+  `og:image` e `twitter:image` do `index.html`, porque o preview de link exige URL absoluta. Se o
+  endereço mudar, essas tags precisam mudar junto, ou o preview quebra sem nenhum erro visível.
+- O endereço padrão do projeto (`luminsight-8a8dc.web.app`) não serve mais o app: ele é um segundo
+  site no mesmo `firebase.json`, que redireciona toda rota para o endereço novo com 302, mantendo
+  caminho e parâmetros. Sem isso, uma cópia velha do app continuaria no ar gravando no mesmo banco, e
+  quebraria em silêncio quando as rules mudassem. O 302 é temporário de propósito, para poder ser
+  desfeito até a entrega; trocar por 301 depois é uma linha.
 - O domínio de autenticação está escrito na política (`luminsight-8a8dc.firebaseapp.com`). Se o
   projeto Firebase mudar, a CSP precisa ser atualizada junto.
 - O SDK do Firebase Auth também contém referências a `www.google.com/recaptcha`. Elas só são usadas
@@ -398,19 +429,51 @@ script e falharia em silêncio se alguém esquecesse.
   dezenas de vulnerabilidades em dependências próprias. Ele roda por `npx` com a versão fixa e
   nunca faz parte do aplicativo.
 
-**Risco aceito.** Resta uma vulnerabilidade de severidade alta sem correção disponível:
-`braces` até a versão 3.0.3 (GHSA-vfj7-8cjw-p6xm, esgotamento de pilha com padrões aninhados).
-A 3.0.3 é a última versão publicada. O pacote entra apenas pelo Tailwind CSS 3, durante o build,
-para expandir os padrões de arquivo do `tailwind.config.js`. Esses padrões são fixos e escritos
-pelo desenvolvedor, então explorar a falha exigiria controlar o arquivo de configuração, e quem
-controla esse arquivo já controla o build inteiro. O pacote não vai para o bundle entregue ao
-navegador. A alternativa seria migrar para o Tailwind 4, que não usa `braces`, mas a migração muda a
-configuração e parte dos utilitários e foi deixada para depois.
+**Como o CI barra dependências.** O comando `npm run audit:check` (`scripts/audit-check.ts`) roda o
+`npm audit` e falha em qualquer vulnerabilidade de severidade alta ou crítica. O script aceita uma
+lista de exceções, cada uma com a justificativa ao lado, e hoje essa lista está vazia. As de
+severidade moderada e baixa não barram o CI: isso é uma decisão, e as moderadas conhecidas estão
+listadas abaixo como risco aceito.
 
-Para a integração contínua continuar barrando qualquer vulnerabilidade nova, o comando
-`npm run audit:check` (`scripts/audit-check.ts`) roda o `npm audit` e falha em qualquer
-vulnerabilidade alta ou crítica, com exceção da lista de riscos aceitos. Cada item da lista tem a
-justificativa ao lado. Por isso o `npm audit --audit-level=high` puro continua acusando o `braces`.
+**Histórico: a exceção do `braces`.** O nome do pacote é `braces`, não `brace-expansion`: o
+`brace-expansion` teve uma falha própria, corrigida pelo `npm audit fix` na fase 11.
+
+- **Qual era a falha.** `braces` até a versão 3.0.3 (GHSA-vfj7-8cjw-p6xm), de severidade alta:
+  esgotamento de pilha ao expandir padrões aninhados. Na fase 11, a 3.0.3 era a última versão
+  publicada, sem correção.
+- **Por que não era explorável aqui.** O pacote entra apenas pelo Tailwind CSS 3, durante o build,
+  para expandir os padrões de arquivo do `tailwind.config.js`. Esses padrões são fixos e escritos
+  pela equipe, então explorar a falha exigiria controlar o arquivo de configuração, e quem controla
+  esse arquivo já controla o build inteiro. O pacote não vai para o código entregue ao navegador.
+- **Por que não migramos o Tailwind.** O Tailwind 4 não usa `braces`, mas a migração muda a
+  configuração e parte dos utilitários usados em todas as telas, e não cabia no prazo do trabalho
+  para um risco tão baixo.
+- **Mitigação no CI.** A falha entrou na lista de exceções do `audit-check.ts`, com a justificativa
+  acima. Assim o CI continuou barrando qualquer outra vulnerabilidade alta ou crítica.
+- **Por que a exceção foi removida.** Em 24/10/2026 o `npm audit` deixou de acusar o
+  GHSA-vfj7-8cjw-p6xm por qualquer caminho, embora o `braces` instalado continue na 3.0.3. A exceção
+  passou a não suprimir nada, e uma exceção assim é uma armadilha: se o aviso voltar, ela o esconde e
+  o CI fica verde sem ninguém saber. Ela saiu do script; se o aviso voltar, o CI falha e a decisão é
+  tomada de novo, com o raciocínio acima como ponto de partida.
+
+**Outras atualizações por segurança.** Em 24/10/2026 o `zod` subiu de 4.4.3 para 4.6.7
+(GHSA-mrhx-c7xc-m3w5, esgotamento de memória ao validar coleções grandes) e o `undici`, que só entra
+nos testes pelo `jsdom`, subiu para 7.30.1. O `zod` corrigido custou cerca de 7 KB a mais, com gzip,
+no carregamento da primeira tela.
+
+**Risco aceito: 8 vulnerabilidades moderadas conhecidas.** Em 24/10/2026 o `npm audit` acusa 8
+moderadas e nenhuma baixa, alta ou crítica. O `npm audit` conta cada pacote da cadeia, então as 8
+vêm de quatro avisos:
+
+| Aviso | Pacotes contados | Origem | Por que é aceitável |
+| --- | --- | --- | --- |
+| GHSA-82fw-gwwq-j7x9 e GHSA-qxg6-89mg-rqv8 (leitura de arquivo e injeção de código pelo registro de mocks) | `vitest`, `@vitest/mocker`, `@vitest/coverage-v8` | Vitest, ferramenta de testes | só roda na máquina de quem desenvolve e no CI, sobre o próprio código do projeto; não vai para o site |
+| GHSA-w5hq-g745-h8pq (falta de checagem de limite de buffer) | `uuid`, `gaxios` | `firebase-admin` > `@google-cloud/storage` > `gaxios` | só o seed e a exportação usam o Admin SDK, na máquina de quem tem a credencial; a falha exige passar um buffer próprio para o `uuid`, o que nenhum código do projeto faz |
+| GHSA-rj75-hqrm-r3gf (complexidade quadrática ao analisar seletores CSS) | `postcss-selector-parser`, `postcss-nested`, `tailwindcss` | Tailwind CSS 3, no build | analisa só o CSS escrito pela equipe; quem controla esse CSS já controla o build |
+
+Nenhuma delas entra no código entregue ao navegador. A condição para rever é qualquer uma subir para
+alta ou crítica, quando o CI passa a falhar sozinho, ou aparecer uma versão corrigida compatível,
+quando ela deve ser aplicada.
 
 ### 6.2 Dependências de produção
 
@@ -426,9 +489,11 @@ Todas foram verificadas como em uso no código.
 | `clsx`, `tailwind-merge` | Composição de classes CSS nos componentes. |
 
 As dependências de desenvolvimento (ESLint, Vitest, Testing Library, TypeScript, Tailwind,
-PostCSS, Prettier, Vite, `firebase-admin` para o seed, `tsx` para os scripts e
-`@firebase/rules-unit-testing` para os testes das rules) não fazem parte do bundle entregue ao
-navegador.
+PostCSS, Prettier, Vite, `firebase-admin` para o seed e a exportação, `tsx` para os scripts,
+`@firebase/rules-unit-testing` para os testes das rules, `rollup-plugin-visualizer` para medir o
+bundle e `playwright-core` para a medição manual em 390 px) não fazem parte do bundle entregue ao
+navegador. O `playwright-core` foi auditado antes de entrar: não tem dependência própria nem script
+de instalação, e não mudou o resultado do `npm audit`.
 
 ## 7. Mapeamento OWASP Top 10 (2021)
 
@@ -445,6 +510,7 @@ navegador.
   um link como `/login?redirect=%2F%09%2Fevil.com`. A correção recusa caracteres de controle e, como
   última barreira, resolve a URL e exige que a origem continue a mesma. Cada variante conhecida
   ficou numa tabela de testes em `redirect.test.ts`.
+- **Dado de pesquisa:** só é gravado com consentimento, conferido pelas rules no servidor (seção 10.2).
 - **Fora:** progresso declarado pelo próprio usuário (seção 4).
 
 ### A02: Falhas criptográficas
@@ -484,7 +550,7 @@ navegador.
 - **Mitigação:** `npm audit` na integração contínua com lista explícita de riscos aceitos, correção
   das vulnerabilidades com correção disponível e `overrides` onde a dependência intermediária não
   atualiza (seção 6).
-- **Fora:** `braces` sem correção, aceito com justificativa.
+- **Fora:** 8 vulnerabilidades moderadas em ferramentas de desenvolvimento, aceitas com justificativa (seção 6.1).
 
 ### A07: Falhas de identificação e autenticação
 
@@ -505,7 +571,10 @@ navegador.
 ### A09: Falhas de registro e monitoramento
 
 - **Situação:** o projeto não tem registro de eventos de segurança nem alertas. As tentativas
-  negadas pelas rules aparecem apenas nas métricas do console do Firebase. Para um ambiente de
+  negadas pelas rules aparecem apenas nas métricas do console do Firebase. As falhas de gravação de
+  dado da pesquisa são registradas no console do navegador, também no build de produção, com o tipo
+  da falha (recusa do banco ou validação) e sem dado pessoal; perda de dado é detectada depois pela
+  conferência da exportação (seção 10.7). Para um ambiente de
   produção real seria necessário um mecanismo de auditoria, que também dependeria de Cloud
   Functions.
 
@@ -639,7 +708,9 @@ dados do Firestore. A separação existe porque o preview publica código de qua
 em PR: se ele usasse a credencial de produção, um PR conseguiria publicar rules.
 
 O job de produção roda no GitHub Environment `production`, que exige aprovação manual de um
-revisor e só aceita a branch `main`. A credencial de produção fica nos secrets desse environment,
+revisor e só aceita a branch `main`. A opção "Prevent self-review" fica desligada de propósito: quem
+mergeia na `main` também pode aprovar, então a pausa antes de produção existe sem depender de outra
+pessoa do grupo estar disponível. A credencial de produção fica nos secrets desse environment,
 então nenhum outro job do repositório consegue lê-la. No runner, o JSON é gravado fora do diretório
 de trabalho e apagado ao final do job.
 
@@ -648,13 +719,22 @@ de trabalho e apagado ao final do job.
 Até a fase 13, as rules eram coladas à mão no console do Firebase. Assim, o arquivo do repositório
 e o que estava em produção podiam divergir sem ninguém perceber, e não havia registro de quem
 publicou o quê. Agora o `firestore.rules` e o `firestore.indexes.json` são publicados pelo
-`deploy.yml`, sempre depois de os testes das rules passarem no emulador (seção 2.8). O repositório
+`deploy.yml`, sempre depois de os testes das rules passarem no emulador (seção 2.9). O repositório
 passou a ser a fonte única de verdade, e o histórico do git e o log do GitHub Actions registram
 cada publicação. Antes de ligar isso, as rules e os índices do console foram comparados com os
 arquivos do repositório e estavam idênticos.
 
 Publicar pelo console continua tecnicamente possível para quem tem acesso ao projeto, mas a próxima
 execução do pipeline sobrescreve a mudança.
+
+**Chave de transição do consentimento.** As rules têm uma função `consentRequired()`. Em `false`,
+ela aceita o onboarding antigo, sem decisão sobre a pesquisa; o formato antigo não abre brecha,
+porque a lista de campos dele não comporta percepção de risco. A versão em `false` foi preparada e
+testada para publicar as rules antes do código, mas as rules da pesquisa acabaram indo para produção
+no mesmo deploy do código que grava o consentimento, já com `true`. A chave ficou no arquivo como
+forma rápida de voltar atrás, se algum código sem o aviso de pesquisa precisasse rodar contra o
+banco. Os testes das rules cobrem a versão em `true`, inclusive a conta que concluiu o onboarding
+pelo formato antigo antes do aviso existir e decide depois pelo aviso único.
 
 ### 9.4 Desenvolvimento e produção no mesmo banco
 
@@ -678,14 +758,142 @@ A solução completa seria um segundo projeto Firebase só para desenvolvimento,
 apontando cada branch para o seu projeto. Para um TCC com poucos usuários, o custo de manter dois
 projetos, dois conjuntos de credenciais e dois seeds não compensa, e a escolha fica registrada aqui.
 
-## 10. Resumo do que ficou de fora
+## 10. Dados da pesquisa do TCC
+
+O modelo de dados da pesquisa (coleções, campos e decisões de medida) está em `docs/modelagem.md`.
+Esta seção trata só do que tem implicação de segurança e privacidade.
+
+### 10.1 Consentimento
+
+Antes das perguntas do onboarding, a pessoa vê um aviso curto: o site faz parte de um TCC, o que é
+coletado (progresso e respostas de quiz e de simulação), que os resultados são publicados só de
+forma agregada e anônima, que participar é opcional e que dá para mudar de ideia no Perfil. São
+duas caixas, as duas desmarcadas por padrão: "Tenho 18 anos ou mais" e "Aceito participar da
+pesquisa". A segunda só fica disponível depois da primeira. Seguir sem marcar nada vale como "não
+participa", e o site funciona inteiro do mesmo jeito.
+
+A decisão fica no documento do usuário em `researchConsent`: `accepted`, `isAdult`, `decidedAt`
+e `version`. As rules exigem que:
+
+- `accepted` só seja verdadeiro junto com `isAdult` verdadeiro;
+- `decidedAt` seja o horário do servidor, nunca uma data enviada pelo cliente;
+- `version` seja a do texto que a pessoa viu.
+
+Idade e data de nascimento nunca são gravadas. `isAdult` é só a declaração.
+
+As 9 contas criadas antes do aviso existir veem uma versão própria do texto (`retroativo-v2`), uma
+única vez, no próximo acesso. Essa versão diz "inclusive o que você já fez aqui", porque essas
+pessoas já têm progresso e respostas gravados. Depois da escolha, o site segue normal.
+
+### 10.2 Minimização travada nas rules
+
+Progresso e resultados de quiz continuam sendo gravados para todo mundo, porque o site precisa
+deles para funcionar. Os dados que existem só para a pesquisa só são gravados para quem aceitou:
+
+- `simulationResults` (decisões dentro das simulações);
+- `trailFeedback` (pós-teste e satisfação);
+- `riskBaseline` (percepção de risco de antes).
+
+Essa regra fica nas rules, e não só num filtro da exportação. A regra lê o documento do usuário e
+nega por padrão: se o documento não existe, ou não tem o campo de consentimento, a gravação é
+recusada. Os testes de rules cobrem os quatro casos: aceitou, recusou, sem o campo e sem documento.
+
+Custo: cada gravação dessas coleções faz duas leituras a mais dentro das rules (o documento do
+usuário e a simulação, ou o progresso do módulo final). Com 30 pessoas, a conta estimada fica em
+torno de 400 leituras no estudo inteiro, menos de 1% da cota diária gratuita de 50 mil leituras do
+plano Spark. A conta detalhada está em `docs/modelagem.md`.
+
+### 10.3 Revogação e exclusão
+
+A pessoa pode sair da pesquisa a qualquer momento pelo Perfil. Antes de confirmar, a tela diz que
+nenhum dado dela entra no trabalho, nem o que já foi gravado, e que o progresso no site continua
+igual. Revogar grava `accepted: false` e não apaga nada: as rules continuam sem update e sem delete
+nas coleções de resultado (decisão da fase 9). Quem revoga deixa de ter registros novos de pesquisa,
+e a exportação deixa a pessoa de fora por completo, olhando a decisão atual de cada conta.
+
+**Pedido de exclusão de verdade.** É feito à mão, por alguém com a credencial de administrador:
+
+1. registrar a data do pedido e o UID, sem copiar dados pessoais para o registro;
+2. apagar, pelo console do Firebase ou pelo Admin SDK, nesta ordem: `trailFeedback/{uid}`, os
+   documentos de `simulationResults` e de `quizResults` com `userId == uid`, a subcoleção
+   `users/{uid}/progress`, o documento `users/{uid}` e a conta no Authentication;
+3. conferir que nenhuma das consultas acima devolve mais nada.
+
+Não existe botão de exclusão no site de propósito. Uma exclusão feita pelo cliente exigiria abrir
+delete nas rules, e isso permitiria apagar resultados para esconder tentativas.
+
+### 10.4 Limitação aceita: conteúdo das listas e acertos declarados pelo cliente
+
+**Limitação.** As rules não conseguem percorrer uma lista. Em `simulationResults`, elas validam que
+`decisions` é uma lista com o tamanho igual a `totalDecisions` e que `correctDecisions` não passa
+do total, mas não validam o formato de cada item nem se `isCorrect` é verdade. É a mesma limitação
+de `quizResults.answers` e do progresso gravado pelo cliente (seção 4).
+
+**Impacto real.** Quem abrir o console do navegador consegue gravar uma tentativa de simulação
+inventada na própria conta, com mais acertos do que teve. O dado de outra pessoa continua
+protegido. O efeito é ruído nos números da pesquisa, vindo de um participante que agiu de má-fé
+contra a própria participação.
+
+**Por que aceitamos.** A correção completa é a mesma da seção 4: mover a correção para Cloud
+Functions, que exige o plano pago. Para uma amostra pequena e conhecida, o risco de alguém forjar
+resultado de pesquisa pelo console é baixo, e os dados ficam conferíveis: cada decisão gravada
+aponta para uma cena e uma opção que existem no conteúdo, e a exportação pode recalcular o acerto
+pelo gabarito e descartar o que não bater.
+
+**Quando rever.** Se o site passar a ter participantes desconhecidos em escala, ou se a exportação
+encontrar decisões que não batem com o gabarito, a correção precisa ir para o servidor.
+
+### 10.5 Comentário livre
+
+O comentário da pesquisa final é o único texto livre do site. As rules e o schema limitam a 500
+caracteres, e ele é tratado como dado não confiável em qualquer lugar onde aparecer: na tela, o
+React já exibe como texto; na exportação, todo campo de texto, não só o comentário, é neutralizado
+contra fórmula de planilha pela regra da OWASP (texto começando com `=`, `+`, `-`, `@`, tabulação ou
+retorno de carro ganha um apóstrofo na frente).
+
+### 10.6 Exportação e identificador anônimo
+
+A exportação (`docs/modelagem.md`, seção 4) roda na máquina de quem tem a credencial de
+administrador, só lê o banco e grava os CSV numa pasta fora do repositório, que ela se recusa a usar
+se estiver dentro dele. Nome, e-mail e UID nunca saem: cada pessoa vira um HMAC-SHA256 do uid com uma
+chave secreta, guardada em `~/.config/luminsight/export-key`.
+
+**Risco aceito: vazamento da chave.** A anonimização depende da chave. Quem tiver a chave e a lista de
+uids (o console do Firebase mostra os uids) consegue recalcular os identificadores e ligar cada linha
+das planilhas a uma conta. Por isso a chave fica fora do repositório, como a credencial do Admin SDK,
+e nunca vai para CI, e-mail ou mensagem. Se ela vazar, a medida é gerar uma chave nova: os
+identificadores das próximas exportações mudam todos, e as planilhas antigas precisam ser tratadas
+como identificáveis por quem tiver a chave antiga.
+
+### 10.7 Divergência entre acerto gravado e acerto recalculado
+
+É a medida real da limitação da seção 10.4: quanto do acerto que o navegador declarou não bate com o
+gabarito. A exportação recorrige cada resposta de quiz e cada decisão de simulação pelo gabarito do
+repositório e conta os registros em que o valor gravado é diferente do recalculado. Questões e cenas
+que não existem mais no conteúdo ficam fora da conta e são informadas à parte.
+
+Uma divergência pode ter duas causas que a exportação não distingue: alguém forjou o próprio
+resultado pelo console, ou o conteúdo mudou depois da resposta. Por isso o número é um teto para
+fraude, não a contagem de fraudes.
+
+| Medida | Divergentes | Total conferido | Sem gabarito atual |
+| --- | --- | --- | --- |
+| Respostas de quiz | [PENDENTE] | [PENDENTE] | [PENDENTE] |
+| Decisões de simulação | [PENDENTE] | [PENDENTE] | [PENDENTE] |
+
+Os números saem do resumo de `npm run export:results`, na seção "Divergência entre acerto gravado e
+recalculado pelo gabarito".
+
+## 11. Resumo do que ficou de fora
 
 | Item | Motivo | Caminho para resolver |
 | --- | --- | --- |
 | Progresso e notas declarados pelo cliente | Exige lógica no servidor | Cloud Functions (plano Blaze) |
 | Gabarito dos quizzes no bundle | Exige correção no servidor | Cloud Functions |
-| `braces` sem correção no Tailwind 3 | Sem versão corrigida publicada | Migrar para o Tailwind 4 |
+| 8 vulnerabilidades moderadas em ferramentas de desenvolvimento (Vitest, Admin SDK, Tailwind 3) | Nenhuma vai para o site; sem correção compatível | Aplicar a versão corrigida quando sair (seção 6.1) |
 | Verificação de email e dois fatores | Fora do escopo do TCC | Recursos nativos do Firebase Auth |
 | Registro de eventos de segurança | Exige processamento no servidor | Cloud Functions e Cloud Logging |
 | Subresource Integrity no Google Fonts | CSS gerado dinamicamente pelo Google | Hospedar a fonte no próprio domínio |
 | Desenvolvimento e produção no mesmo banco | Custo de manter dois projetos Firebase | Projeto separado para desenvolvimento |
+| Conteúdo das decisões e acertos de simulação declarados pelo cliente | Exige correção no servidor | Cloud Functions (plano Blaze) |
+| Exclusão de dados pelo próprio usuário | Exigiria abrir delete nas rules | Procedimento manual (seção 10.3) |

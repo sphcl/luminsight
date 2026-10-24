@@ -23,6 +23,7 @@ export interface SimulationSummary {
   score: number
   isPerfect: boolean
   decisions: SimulationDecisionRecord[]
+  timeSpentSeconds: number
 }
 
 // Devolvo null pra opção que não existe na decisão, assim quem chama ignora em vez de contar como erro.
@@ -48,13 +49,18 @@ export function isPerfectRun(decisions: SimulationDecisionRecord[]): boolean {
   return decisions.length > 0 && decisions.every((decision) => decision.isCorrect)
 }
 
-export function summarizeSimulation(decisions: SimulationDecisionRecord[]): SimulationSummary {
+export function summarizeSimulation(
+  decisions: SimulationDecisionRecord[],
+  timeSpentSeconds: number
+): SimulationSummary {
   return {
     correctDecisions: decisions.filter((decision) => decision.isCorrect).length,
     totalDecisions: decisions.length,
     score: calculateSimulationScore(decisions),
     isPerfect: isPerfectRun(decisions),
     decisions,
+    // Inteiro e nunca negativo, que é o que as rules de simulationResults aceitam.
+    timeSpentSeconds: Math.max(0, Math.round(timeSpentSeconds)),
   }
 }
 

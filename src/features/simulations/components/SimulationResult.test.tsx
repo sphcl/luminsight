@@ -8,10 +8,13 @@ import { buildBranchingSimulation } from '@/test/fixtures/simulation'
 describe('SimulationResult', () => {
   it('revisa só as cenas do caminho percorrido e mostra a conclusão', () => {
     const { scenes } = buildBranchingSimulation()
-    const summary = summarizeSimulation([
-      { sceneId: 'cena-01', selectedOptionId: 'b', isCorrect: false },
-      { sceneId: 'cena-03', selectedOptionId: 'a', isCorrect: true },
-    ])
+    const summary = summarizeSimulation(
+      [
+        { sceneId: 'cena-01', selectedOptionId: 'b', isCorrect: false },
+        { sceneId: 'cena-03', selectedOptionId: 'a', isCorrect: true },
+      ],
+      45
+    )
 
     render(
       <MemoryRouter>

@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
 import { getStatusBadge } from '@/features/modules/labels'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
+import { TrailFeedbackCard } from '@/features/research/components/TrailFeedbackCard'
+import { isFinalQuiz } from '@/content/quizzes'
 import type {
   DashboardModule,
   DashboardSummary,
@@ -84,6 +86,9 @@ function StartedView({
   continueRoute: string
 }) {
   const continueCopy = getContinueCopy(summary.nextStep)
+  const trailCompleted = summary.modules.some(
+    ({ module, status }) => isFinalQuiz(module.id) && status === 'completed'
+  )
   const stats = [
     { label: 'Módulos concluídos', value: summary.modulesCompleted },
     { label: 'Lições concluídas', value: summary.lessonsCompleted },
@@ -93,6 +98,8 @@ function StartedView({
 
   return (
     <>
+      <TrailFeedbackCard trailCompleted={trailCompleted} />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="flex flex-col justify-between gap-3">
           <div>

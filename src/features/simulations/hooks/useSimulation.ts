@@ -42,6 +42,11 @@ export interface UseSimulationReturn {
   result: SimulationSummary | null
 }
 
+// Fora do hook porque o compilador não enxerga que advance só roda a partir de clique, nunca no render.
+function secondsSince(startedAt: number): number {
+  return (Date.now() - startedAt) / 1000
+}
+
 export function useSimulation(
   simulation: SimulationDocument,
   { onFinish, autoAdvance = false }: UseSimulationOptions = {}
@@ -52,6 +57,7 @@ export function useSimulation(
   const [revealedCount, setRevealedCount] = useState(0)
   const [decisions, setDecisions] = useState<SimulationDecisionRecord[]>([])
   const [result, setResult] = useState<SimulationSummary | null>(null)
+  const [startedAt] = useState(() => Date.now())
   // Ref e não state pelo mesmo motivo do quiz: dois cliques no mesmo render finalizariam duas vezes.
   const hasFinishedRef = useRef(false)
 
@@ -127,7 +133,7 @@ export function useSimulation(
     if (hasFinishedRef.current) return
     hasFinishedRef.current = true
 
-    const summary = summarizeSimulation(decisionsSoFar)
+    const summary = summarizeSimulation(decisionsSoFar, secondsSince(startedAt))
     setResult(summary)
     onFinish?.(summary)
   }
