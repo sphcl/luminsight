@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { LateConsentGate } from '@/features/research/components/LateConsentGate'
+import { useAuth } from '@/hooks/useAuth'
 import { Header } from '../Header/Header'
 import { Sidebar } from '../Sidebar/Sidebar'
 
@@ -10,6 +12,9 @@ const MAIN_CONTENT_ID = 'main-content'
 // conteúdo da rota atual dentro de <main>.
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const { userDocument } = useAuth()
+  // Só conta antiga chega aqui sem o campo: quem passou pelo onboarding novo já decidiu lá.
+  const needsLateConsent = userDocument !== null && !userDocument.researchConsent
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -35,7 +40,7 @@ export function AppLayout() {
             tabIndex={-1}
             className="min-w-0 flex-1 px-4 py-8 sm:px-8 md:px-12"
           >
-            <Outlet />
+            {needsLateConsent ? <LateConsentGate /> : <Outlet />}
           </main>
         </div>
       </div>

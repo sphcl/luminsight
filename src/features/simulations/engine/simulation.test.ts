@@ -84,14 +84,19 @@ describe('isPerfectRun', () => {
 })
 
 describe('summarizeSimulation', () => {
-  it('junta acertos, total, nota e execução perfeita', () => {
-    expect(summarizeSimulation(oneWrong)).toEqual({
+  it('junta acertos, total, nota, execução perfeita e tempo', () => {
+    expect(summarizeSimulation(oneWrong, 92.6)).toEqual({
       correctDecisions: 2,
       totalDecisions: 3,
       score: 66,
       isPerfect: false,
       decisions: oneWrong,
+      timeSpentSeconds: 93,
     })
+  })
+
+  it('tempo vira inteiro e nunca negativo, que é o que as rules aceitam', () => {
+    expect(summarizeSimulation(oneWrong, -3).timeSpentSeconds).toBe(0)
   })
 })
 

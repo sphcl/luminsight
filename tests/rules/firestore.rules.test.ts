@@ -28,6 +28,17 @@ const BOB = { uid: 'bob', email: 'bob@example.com' }
 
 let testEnv: RulesTestEnvironment
 
+const RULES = readFileSync('firestore.rules', 'utf-8')
+const CONSENT_SWITCH = /function consentRequired\(\) \{\s*return false;\s*\}/
+
+// Gera a versão que o PR de aperto vai publicar, pra ela já estar testada antes de existir.
+function strictRules(): string {
+  if (!CONSENT_SWITCH.test(RULES)) {
+    throw new Error('consentRequired() não está mais como "return false" no firestore.rules')
+  }
+  return RULES.replace(CONSENT_SWITCH, 'function consentRequired() {\n      return true;\n    }')
+}
+
 function dbAs(user: { uid: string; email: string }): Firestore {
   return testEnv
     .authenticatedContext(user.uid, { email: user.email })
@@ -91,6 +102,61 @@ function storedProgress(overrides: DocumentData = {}) {
   }
 }
 
+function consent(overrides: DocumentData = {}) {
+  return {
+    accepted: true,
+    isAdult: true,
+    decidedAt: serverTimestamp(),
+    version: 'onboarding-v1',
+    ...overrides,
+  }
+}
+
+const ONBOARDING_PROFILE = {
+  securityKnowledge: 'iniciante',
+  scamExperience: 'prefiro_nao_responder',
+  motivation: 'curiosidade',
+}
+
+function storedConsent(accepted: boolean) {
+  return {
+    accepted,
+    isAdult: accepted,
+    decidedAt: Timestamp.fromDate(new Date('2026-01-01')),
+    version: 'onboarding-v1',
+  }
+}
+
+function newSimulationResult(overrides: DocumentData = {}) {
+  return {
+    userId: ALICE.uid,
+    simulationId: 'simulacao-modulo-01',
+    moduleId: 'modulo-01',
+    completedAt: serverTimestamp(),
+    totalDecisions: 2,
+    correctDecisions: 1,
+    timeSpentSeconds: 90,
+    decisions: [
+      { sceneId: 'cena-01', selectedOptionId: 'a', isCorrect: true },
+      { sceneId: 'cena-02', selectedOptionId: 'b', isCorrect: false },
+    ],
+    ...overrides,
+  }
+}
+
+function newTrailFeedback(overrides: DocumentData = {}) {
+  return {
+    userId: ALICE.uid,
+    submittedAt: serverTimestamp(),
+    securityKnowledge: 'intermediario',
+    riskPerception: 'alta',
+    satisfaction: 'gostei',
+    mostUseful: ['licoes', 'simulacoes'],
+    comment: 'Gostei das simulações.',
+    ...overrides,
+  }
+}
+
 function newQuizResult(overrides: DocumentData = {}) {
   return {
     userId: ALICE.uid,
@@ -109,7 +175,7 @@ function newQuizResult(overrides: DocumentData = {}) {
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'demo-luminsight',
-    firestore: { rules: readFileSync('firestore.rules', 'utf-8') },
+    firestore: { rules: RULES },
   })
 })
 
@@ -227,11 +293,8 @@ describe('users', () => {
     await assertSucceeds(
       updateDoc(doc(dbAs(ALICE), alicePath), {
         onboardingCompleted: true,
-        onboardingProfile: {
-          securityKnowledge: 'iniciante',
-          scamExperience: 'prefiro_nao_responder',
-          motivation: 'curiosidade',
-        },
+        onboardingProfile: ONBOARDING_PROFILE,
+        researchConsent: consent({ accepted: false, isAdult: false }),
       })
     )
   })
@@ -246,6 +309,7 @@ describe('users', () => {
           scamExperience: 'caí no golpe do pix e perdi R$ 2.000',
           motivation: 'curiosidade',
         },
+        researchConsent: consent({ accepted: false, isAdult: false }),
       })
     )
   })
@@ -260,6 +324,7 @@ describe('users', () => {
           scamExperience: 'nao',
           motivation: 'curiosidade',
         },
+        researchConsent: consent({ accepted: false, isAdult: false }),
       })
     )
   })
@@ -571,6 +636,324 @@ describe('quizResults', () => {
   })
 })
 
+describe('consentimento da pesquisa', () => {
+  const alicePath = `users/${ALICE.uid}`
+  const onboardedAlice = () =>
+    storedUserDocument({ onboardingCompleted: true, onboardingProfile: ONBOARDING_PROFILE })
+
+  it('deixa aceitar no onboarding junto com a percepção de risco de antes', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+        researchConsent: consent(),
+        riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('bloqueia aceitar sem a declaração de 18 anos', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+        researchConsent: consent({ isAdult: false }),
+        riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('bloqueia guardar percepção de risco de quem não aceitou', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+        researchConsent: consent({ accepted: false, isAdult: true }),
+        riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('bloqueia marcar como coletado antes de usar o que veio depois', async () => {
+    await seed(alicePath, onboardedAlice())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1' }),
+        riskBaseline: { riskPerception: 'alta', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('deixa conta antiga decidir uma vez, com o antes marcado como coletado depois de usar', async () => {
+    await seed(alicePath, onboardedAlice())
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1' }),
+        riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
+      })
+    )
+  })
+
+  it('bloqueia escala com meio, que não existe', async () => {
+    await seed(alicePath, onboardedAlice())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1' }),
+        riskBaseline: { riskPerception: 'media', collectedAfterUse: true },
+      })
+    )
+  })
+
+  it('bloqueia data de decisão forjada', async () => {
+    await seed(alicePath, onboardedAlice())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({
+          version: 'retroativo-v1',
+          accepted: false,
+          isAdult: false,
+          decidedAt: Timestamp.fromDate(new Date('2025-01-01')),
+        }),
+      })
+    )
+  })
+
+  it('deixa revogar pelo Perfil sem apagar nada', async () => {
+    await seed(alicePath, {
+      ...onboardedAlice(),
+      researchConsent: storedConsent(true),
+      riskBaseline: { riskPerception: 'alta', collectedAfterUse: false },
+    })
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ accepted: false, version: 'retroativo-v1' }),
+      })
+    )
+  })
+
+  it('bloqueia trocar a percepção de risco de antes depois de gravada', async () => {
+    await seed(alicePath, {
+      ...onboardedAlice(),
+      researchConsent: storedConsent(true),
+      riskBaseline: { riskPerception: 'alta', collectedAfterUse: false },
+    })
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1' }),
+        riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('deixa dispensar o card da pesquisa final com o horário do servidor', async () => {
+    await seed(alicePath, onboardedAlice())
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), { trailFeedbackDismissedAt: serverTimestamp() })
+    )
+  })
+})
+
+describe('simulationResults', () => {
+  beforeEach(async () => {
+    await seed('simulations/simulacao-modulo-01', { moduleId: 'modulo-01' })
+  })
+
+  const withConsent = (accepted: boolean) =>
+    seed(`users/${ALICE.uid}`, storedUserDocument({ researchConsent: storedConsent(accepted) }))
+
+  it('deixa quem consentiu registrar o resultado', async () => {
+    await withConsent(true)
+    await assertSucceeds(
+      addDoc(collection(dbAs(ALICE), 'simulationResults'), newSimulationResult())
+    )
+  })
+
+  it('bloqueia quem recusou', async () => {
+    await withConsent(false)
+    await assertFails(addDoc(collection(dbAs(ALICE), 'simulationResults'), newSimulationResult()))
+  })
+
+  it('bloqueia por padrão quem ainda não tem o campo de consentimento', async () => {
+    await seed(`users/${ALICE.uid}`, storedUserDocument())
+    await assertFails(addDoc(collection(dbAs(ALICE), 'simulationResults'), newSimulationResult()))
+  })
+
+  it('bloqueia por padrão quem não tem documento de usuário', async () => {
+    await assertFails(addDoc(collection(dbAs(ALICE), 'simulationResults'), newSimulationResult()))
+  })
+
+  it('bloqueia registrar em nome de outra pessoa', async () => {
+    await withConsent(true)
+    await assertFails(
+      addDoc(collection(dbAs(BOB), 'simulationResults'), newSimulationResult({ userId: ALICE.uid }))
+    )
+  })
+
+  it('bloqueia módulo que não é o da simulação', async () => {
+    await withConsent(true)
+    await assertFails(
+      addDoc(
+        collection(dbAs(ALICE), 'simulationResults'),
+        newSimulationResult({ moduleId: 'modulo-02' })
+      )
+    )
+  })
+
+  it('bloqueia simulação que não existe', async () => {
+    await withConsent(true)
+    await assertFails(
+      addDoc(
+        collection(dbAs(ALICE), 'simulationResults'),
+        newSimulationResult({ simulationId: 'simulacao-inventada' })
+      )
+    )
+  })
+
+  it('bloqueia mais acertos que decisões e lista de tamanho diferente do total', async () => {
+    await withConsent(true)
+    const db = dbAs(ALICE)
+    await assertFails(
+      addDoc(collection(db, 'simulationResults'), newSimulationResult({ correctDecisions: 3 }))
+    )
+    await assertFails(
+      addDoc(collection(db, 'simulationResults'), newSimulationResult({ totalDecisions: 3 }))
+    )
+  })
+
+  it('bloqueia data forjada e campo extra', async () => {
+    await withConsent(true)
+    const db = dbAs(ALICE)
+    await assertFails(
+      addDoc(
+        collection(db, 'simulationResults'),
+        newSimulationResult({ completedAt: Timestamp.fromDate(new Date('2025-01-01')) })
+      )
+    )
+    await assertFails(
+      addDoc(collection(db, 'simulationResults'), newSimulationResult({ score: 100 }))
+    )
+  })
+
+  it('bloqueia alterar e apagar resultado gravado', async () => {
+    await seed('simulationResults/r1', {
+      ...newSimulationResult(),
+      completedAt: Timestamp.fromDate(new Date('2026-01-01')),
+    })
+    const db = dbAs(ALICE)
+    await assertFails(updateDoc(doc(db, 'simulationResults/r1'), { correctDecisions: 2 }))
+    await assertFails(deleteDoc(doc(db, 'simulationResults/r1')))
+  })
+
+  it('bloqueia ler resultado de outra pessoa', async () => {
+    await seed('simulationResults/r1', {
+      ...newSimulationResult(),
+      completedAt: Timestamp.fromDate(new Date('2026-01-01')),
+    })
+    await assertFails(getDoc(doc(dbAs(BOB), 'simulationResults/r1')))
+  })
+
+  it('aceita acerto declarado pelo próprio usuário (limitação conhecida)', async () => {
+    await withConsent(true)
+    await assertSucceeds(
+      addDoc(
+        collection(dbAs(ALICE), 'simulationResults'),
+        newSimulationResult({
+          correctDecisions: 2,
+          decisions: [
+            { sceneId: 'cena-01', selectedOptionId: 'a', isCorrect: true },
+            { sceneId: 'cena-02', selectedOptionId: 'b', isCorrect: true },
+          ],
+        })
+      )
+    )
+  })
+})
+
+describe('trailFeedback', () => {
+  const feedbackPath = `trailFeedback/${ALICE.uid}`
+
+  async function aliceWith(accepted: boolean, trailDone: boolean) {
+    await seed(
+      `users/${ALICE.uid}`,
+      storedUserDocument({ researchConsent: storedConsent(accepted) })
+    )
+    await seed(`users/${ALICE.uid}/progress/modulo-05`, {
+      ...storedProgress(),
+      completedAt: trailDone ? Timestamp.fromDate(new Date('2026-02-01')) : null,
+    })
+  }
+
+  it('deixa quem consentiu e concluiu a trilha responder', async () => {
+    await aliceWith(true, true)
+    await assertSucceeds(setDoc(doc(dbAs(ALICE), feedbackPath), newTrailFeedback()))
+  })
+
+  it('aceita resposta sem comentário', async () => {
+    await aliceWith(true, true)
+    const { comment: _comment, ...withoutComment } = newTrailFeedback()
+    await assertSucceeds(setDoc(doc(dbAs(ALICE), feedbackPath), withoutComment))
+  })
+
+  it('bloqueia quem recusou e quem não concluiu a trilha', async () => {
+    await aliceWith(false, true)
+    await assertFails(setDoc(doc(dbAs(ALICE), feedbackPath), newTrailFeedback()))
+
+    await aliceWith(true, false)
+    await assertFails(setDoc(doc(dbAs(ALICE), feedbackPath), newTrailFeedback()))
+  })
+
+  it('bloqueia responder no lugar de outra pessoa', async () => {
+    await aliceWith(true, true)
+    await assertFails(setDoc(doc(dbAs(BOB), feedbackPath), newTrailFeedback()))
+  })
+
+  it('bloqueia comentário acima de 500 caracteres', async () => {
+    await aliceWith(true, true)
+    await assertFails(
+      setDoc(doc(dbAs(ALICE), feedbackPath), newTrailFeedback({ comment: 'a'.repeat(501) }))
+    )
+  })
+
+  it('bloqueia "nada em especial" junto com outra opção, lista vazia, repetida e fora do enum', async () => {
+    await aliceWith(true, true)
+    const db = dbAs(ALICE)
+    for (const mostUseful of [['nada', 'licoes'], [], ['videos'], ['licoes', 'licoes']]) {
+      await assertFails(setDoc(doc(db, feedbackPath), newTrailFeedback({ mostUseful })))
+    }
+  })
+
+  it('bloqueia escala com meio na percepção de risco', async () => {
+    await aliceWith(true, true)
+    await assertFails(
+      setDoc(doc(dbAs(ALICE), feedbackPath), newTrailFeedback({ riskPerception: 'media' }))
+    )
+  })
+
+  it('bloqueia responder de novo, alterar e apagar', async () => {
+    await aliceWith(true, true)
+    await seed(feedbackPath, {
+      ...newTrailFeedback(),
+      submittedAt: Timestamp.fromDate(new Date('2026-02-02')),
+    })
+    const db = dbAs(ALICE)
+    await assertFails(setDoc(doc(db, feedbackPath), newTrailFeedback()))
+    await assertFails(updateDoc(doc(db, feedbackPath), { satisfaction: 'gostei_muito' }))
+    await assertFails(deleteDoc(doc(db, feedbackPath)))
+  })
+
+  it('deixa a própria pessoa ler, e só ela', async () => {
+    await seed(feedbackPath, {
+      ...newTrailFeedback(),
+      submittedAt: Timestamp.fromDate(new Date('2026-02-02')),
+    })
+    await assertSucceeds(getDoc(doc(dbAs(ALICE), feedbackPath)))
+    await assertFails(getDoc(doc(dbAs(BOB), feedbackPath)))
+  })
+})
+
 describe('conteúdo', () => {
   it('deixa usuário logado ler módulos, lições e simulações', async () => {
     await seed('modules/modulo-01/lessons/licao-01', { title: 'Lição' })
@@ -605,5 +988,93 @@ describe('catch-all', () => {
 
   it('bloqueia subcoleção não listada dentro do usuário', async () => {
     await assertFails(setDoc(doc(dbAs(ALICE), `users/${ALICE.uid}/notas/1`), { texto: 'oi' }))
+  })
+})
+
+describe('transição: consentimento ainda opcional no onboarding', () => {
+  const alicePath = `users/${ALICE.uid}`
+
+  it('aceita o onboarding antigo, sem consentimento, pro site no ar não quebrar', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+      })
+    )
+  })
+
+  it('o formato antigo não abre brecha pra percepção de risco sem aceite', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+        riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
+      })
+    )
+  })
+
+  it('conta que entrou pelo formato antigo cai no aviso único depois', async () => {
+    await seed(alicePath, storedUserDocument())
+    const db = dbAs(ALICE)
+    await assertSucceeds(
+      updateDoc(doc(db, alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+      })
+    )
+    await assertSucceeds(
+      updateDoc(doc(db, alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1' }),
+        riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
+      })
+    )
+  })
+})
+
+// Fica por último porque troca as rules do ambiente pelas da versão apertada.
+describe('versão apertada: consentimento obrigatório no onboarding', () => {
+  const alicePath = `users/${ALICE.uid}`
+
+  beforeAll(async () => {
+    await testEnv.cleanup()
+    testEnv = await initializeTestEnvironment({
+      projectId: 'demo-luminsight',
+      firestore: { rules: strictRules() },
+    })
+  })
+
+  it('bloqueia concluir o onboarding sem decidir o consentimento', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertFails(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+      })
+    )
+  })
+
+  it('continua aceitando quem decidiu, aceitando ou recusando', async () => {
+    await seed(alicePath, storedUserDocument())
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        onboardingCompleted: true,
+        onboardingProfile: ONBOARDING_PROFILE,
+        researchConsent: consent({ accepted: false, isAdult: false }),
+      })
+    )
+  })
+
+  it('aviso único das contas antigas continua funcionando', async () => {
+    await seed(
+      alicePath,
+      storedUserDocument({ onboardingCompleted: true, onboardingProfile: ONBOARDING_PROFILE })
+    )
+    await assertSucceeds(
+      updateDoc(doc(dbAs(ALICE), alicePath), {
+        researchConsent: consent({ version: 'retroativo-v1', accepted: false, isAdult: false }),
+      })
+    )
   })
 })

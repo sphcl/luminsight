@@ -9,6 +9,7 @@ import { getQuizForModule, isFinalQuiz } from '@/content/quizzes'
 import { useAuth } from '@/hooks/useAuth'
 import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
 import { ModuleCompleteNotice } from '@/features/modules/components/ModuleCompleteNotice'
+import { TrailClosing } from '@/features/research/components/TrailClosing'
 import { isModuleComplete } from '@/features/modules/engine/trail'
 import { useModuleAccess } from '@/features/modules/hooks/useModuleAccess'
 import { QuizEngine } from '@/features/quiz/components/QuizEngine'
@@ -25,7 +26,7 @@ import { parseRouteId } from '@/utils/security/route-params'
 
 export function Quiz() {
   const moduleId = parseRouteId(useParams<{ moduleId: string }>().moduleId)
-  const { user } = useAuth()
+  const { user, userDocument } = useAuth()
   const { state } = useModuleAccess(moduleId)
 
   switch (state.status) {
@@ -86,6 +87,7 @@ export function Quiz() {
           module={state.module}
           questions={questions}
           progress={state.progress}
+          participatesInResearch={userDocument?.researchConsent?.accepted === true}
         />
       )
     }
@@ -97,11 +99,18 @@ interface QuizSessionProps {
   module: ModuleWithId
   questions: QuizQuestion[]
   progress: ProgressDocument | undefined
+  participatesInResearch: boolean
 }
 
 type Phase = 'intro' | 'running' | 'result'
 
-function QuizSession({ uid, module, questions, progress }: QuizSessionProps) {
+function QuizSession({
+  uid,
+  module,
+  questions,
+  progress,
+  participatesInResearch,
+}: QuizSessionProps) {
   useDocumentTitle(`Quiz: ${module.title}`)
   const [phase, setPhase] = useState<Phase>('intro')
   const [attempt, setAttempt] = useState(0)
@@ -110,6 +119,10 @@ function QuizSession({ uid, module, questions, progress }: QuizSessionProps) {
   const [currentProgress, setCurrentProgress] = useState(progress)
   const [isModuleMarked, setIsModuleMarked] = useState((progress?.completedAt ?? null) !== null)
   const [justCompletedModule, setJustCompletedModule] = useState(false)
+  const [skippedClosing, setSkippedClosing] = useState(false)
+  // Encerramento só na hora em que a trilha fecha, e só pra quem participa da pesquisa.
+  const showClosing =
+    justCompletedModule && isFinalQuiz(module.id) && participatesInResearch && !skippedClosing
 
   async function persistResult(result: QuizSummary) {
     setSaveStatus('saving')
@@ -182,6 +195,10 @@ function QuizSession({ uid, module, questions, progress }: QuizSessionProps) {
 
       {phase === 'result' && justCompletedModule && (
         <ModuleCompleteNotice moduleTitle={module.title} />
+      )}
+
+      {phase === 'result' && showClosing && (
+        <TrailClosing uid={uid} onSkip={() => setSkippedClosing(true)} />
       )}
 
       {phase === 'result' && summary && (

@@ -11,6 +11,7 @@ export const ROUTES = {
   SIMULACOES: '/simulacoes',
   SIMULACAO: '/simulacoes/:simulationId',
   PERFIL: '/perfil',
+  ENCERRAMENTO: '/encerramento',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
 } as const

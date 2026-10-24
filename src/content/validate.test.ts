@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { getContentCompletionReport, hasPendingText, validateContent } from './validate'
 import { CONTENT_MODULES, CONTENT_SIMULATIONS, type ContentModuleEntry } from './index'
+import { CONSENT_TEXTS } from './research'
 import type { LessonEntry } from './types'
 import type { ModuleDocument } from '@/types/module.types'
 import type { QuizQuestion } from '@/types/quiz.types'
@@ -231,6 +232,10 @@ describe('validateContent', () => {
     }
     expect(CONTENT_MODULES.every((entry) => !hasPendingText(entry.module))).toBe(true)
     expect(CONTENT_SIMULATIONS.some(hasPendingText)).toBe(false)
+  })
+
+  it('o aviso da pesquisa não tem [PENDENTE]: troque RESEARCH_CONTACT em src/content/research.ts pelo e-mail real', () => {
+    expect(hasPendingText(CONSENT_TEXTS)).toBe(false)
   })
 
   it('acusa multiple_choice sem quatro alternativas', () => {

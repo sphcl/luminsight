@@ -100,16 +100,158 @@ service cloud.firestore {
         && isServerTimestamp(request.resource.data.lastLoginAt);
     }
 
+    // Transição: enquanto for false, o onboarding antigo (sem consentimento) ainda passa, pro site
+    // no ar não quebrar antes do código novo chegar. Virar true é a única mudança do PR que aperta.
+    function consentRequired() {
+      return false;
+    }
+
+    // Formato antigo primeiro: o write-allowlist.test lê a primeira lista desta função.
     function isOnboardingCompletion() {
+      let data = request.resource.data;
       return resource.data.onboardingCompleted == false
-        && changedUserKeys().hasOnly(['onboardingCompleted', 'onboardingProfile'])
-        && request.resource.data.onboardingCompleted == true
-        && isValidOnboardingProfile(request.resource.data.onboardingProfile);
+        && data.onboardingCompleted == true
+        && isValidOnboardingProfile(data.onboardingProfile)
+        && ((changedUserKeys().hasOnly(['onboardingCompleted', 'onboardingProfile'])
+              && !consentRequired())
+            || isOnboardingWithConsent(data));
+    }
+
+    function isOnboardingWithConsent(data) {
+      return changedUserKeys().hasOnly([
+          'onboardingCompleted', 'onboardingProfile', 'researchConsent', 'riskBaseline'
+        ])
+        && isValidConsent(data.researchConsent, 'onboarding-v1')
+        && hasBaselineOnlyIfConsented(data, false);
     }
 
     function isDisplayNameUpdate() {
       return changedUserKeys().hasOnly(['displayName'])
         && isValidDisplayName(request.resource.data.displayName);
+    }
+
+    // ------------------------------------------------------------- pesquisa
+
+    // Mesmos valores de src/features/research/schemas/research.schema.ts.
+    function riskPerceptionValues() {
+      return ['muito_baixa', 'baixa', 'alta', 'muito_alta'];
+    }
+
+    // accepted só vale com a declaração de 18 anos; idade nunca é gravada, só a declaração.
+    function isValidConsent(consent, version) {
+      return consent is map
+        && consent.keys().hasOnly(['accepted', 'isAdult', 'decidedAt', 'version'])
+        && consent.keys().hasAll(['accepted', 'isAdult', 'decidedAt', 'version'])
+        && consent.accepted is bool
+        && consent.isAdult is bool
+        && (consent.accepted == false || consent.isAdult == true)
+        && isServerTimestamp(consent.decidedAt)
+        && consent.version == version;
+    }
+
+    // Percepção de risco é só da pesquisa: existe se e somente se a pessoa aceitou.
+    function hasBaselineOnlyIfConsented(data, collectedAfterUse) {
+      return data.researchConsent.accepted == ('riskBaseline' in data)
+        && (!('riskBaseline' in data)
+            || (data.riskBaseline is map
+                && data.riskBaseline.keys().hasOnly(['riskPerception', 'collectedAfterUse'])
+                && data.riskBaseline.keys().hasAll(['riskPerception', 'collectedAfterUse'])
+                && data.riskBaseline.riskPerception in riskPerceptionValues()
+                && data.riskBaseline.collectedAfterUse == collectedAfterUse));
+    }
+
+    // Quem já tinha conta antes do aviso decide uma vez só; o "antes" dessa pessoa
+    // fica marcado como coletado depois de usar o site.
+    function isLateConsent() {
+      let data = request.resource.data;
+      return resource.data.onboardingCompleted == true
+        && !('researchConsent' in resource.data)
+        && !('riskBaseline' in resource.data)
+        && changedUserKeys().hasOnly(['researchConsent', 'riskBaseline'])
+        && isValidConsent(data.researchConsent, 'retroativo-v1')
+        && hasBaselineOnlyIfConsented(data, true);
+    }
+
+    // Aceitar ou revogar depois, pelo Perfil. Não mexe no riskBaseline já gravado.
+    function isConsentChange() {
+      return 'researchConsent' in resource.data
+        && changedUserKeys().hasOnly(['researchConsent'])
+        && isValidConsent(request.resource.data.researchConsent, 'retroativo-v1');
+    }
+
+    function isFeedbackDismissal() {
+      return changedUserKeys().hasOnly(['trailFeedbackDismissedAt'])
+        && isServerTimestamp(request.resource.data.trailFeedbackDismissedAt);
+    }
+
+    // Nega por padrão: sem documento ou sem o campo, o get falha ou devolve false.
+    function hasResearchConsent() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        .get('researchConsent', {}).get('accepted', false) == true;
+    }
+
+    // Mesmo id de isFinalQuiz em src/content/quizzes/index.ts.
+    function finalModuleId() {
+      return 'modulo-05';
+    }
+
+    // As rules não percorrem lista: o tamanho de decisions é validado, o conteúdo de cada item não.
+    function isValidSimulationResult() {
+      let data = request.resource.data;
+      let simulation = get(/databases/$(database)/documents/simulations/$(data.simulationId)).data;
+      return data.keys().hasOnly([
+          'userId', 'simulationId', 'moduleId', 'completedAt', 'totalDecisions',
+          'correctDecisions', 'timeSpentSeconds', 'decisions'
+        ])
+        && data.keys().hasAll([
+          'userId', 'simulationId', 'moduleId', 'completedAt', 'totalDecisions',
+          'correctDecisions', 'timeSpentSeconds', 'decisions'
+        ])
+        && data.userId == request.auth.uid
+        && data.simulationId is string
+        && simulation.moduleId == data.moduleId
+        && isServerTimestamp(data.completedAt)
+        && data.totalDecisions is int && data.totalDecisions >= 1 && data.totalDecisions <= 50
+        && data.correctDecisions is int
+        && data.correctDecisions >= 0
+        && data.correctDecisions <= data.totalDecisions
+        && data.timeSpentSeconds is int
+        && data.timeSpentSeconds >= 0
+        && data.timeSpentSeconds <= 86400
+        && data.decisions is list
+        && data.decisions.size() == data.totalDecisions;
+    }
+
+    // Uma resposta por pessoa (id do documento é o uid) e só depois de concluir a trilha.
+    function isValidTrailFeedback(userId) {
+      let data = request.resource.data;
+      let finalProgress = get(
+        /databases/$(database)/documents/users/$(userId)/progress/$(finalModuleId())
+      ).data;
+      return data.keys().hasOnly([
+          'userId', 'submittedAt', 'securityKnowledge', 'riskPerception',
+          'satisfaction', 'mostUseful', 'comment'
+        ])
+        && data.keys().hasAll([
+          'userId', 'submittedAt', 'securityKnowledge', 'riskPerception',
+          'satisfaction', 'mostUseful'
+        ])
+        && data.userId == userId
+        && isServerTimestamp(data.submittedAt)
+        && data.securityKnowledge in ['iniciante', 'intermediario', 'avancado']
+        && data.riskPerception in riskPerceptionValues()
+        && data.satisfaction in [
+          'gostei_muito', 'gostei', 'indiferente', 'nao_gostei', 'nao_gostei_nada'
+        ]
+        && data.mostUseful is list
+        && data.mostUseful.size() >= 1
+        && data.mostUseful.hasOnly(['licoes', 'quizzes', 'simulacoes', 'nada'])
+        && data.mostUseful.toSet().size() == data.mostUseful.size()
+        && (!('nada' in data.mostUseful) || data.mostUseful.size() == 1)
+        // Único texto livre do site: só tamanho é validado, o resto é tratado como não confiável.
+        && (!('comment' in data)
+            || (data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 500))
+        && finalProgress.completedAt != null;
     }
 
     // ------------------------------------------------------------- progress
@@ -218,7 +360,12 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUserCreate();
       allow update: if isOwner(userId)
         && roleIsImmutable()
-        && (isLoginUpdate() || isOnboardingCompletion() || isDisplayNameUpdate());
+        && (isLoginUpdate()
+            || isOnboardingCompletion()
+            || isDisplayNameUpdate()
+            || isLateConsent()
+            || isConsentChange()
+            || isFeedbackDismissal());
       allow delete: if false;
 
       // O moduleId do path tem que existir em /modules: sem isso dava pra encher a
@@ -258,6 +405,21 @@ service cloud.firestore {
     match /quizResults/{resultId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && isValidQuizResult();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Dado só da pesquisa: sem consentimento a gravação é recusada aqui, não só filtrada depois.
+    match /simulationResults/{resultId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && hasResearchConsent() && isValidSimulationResult();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /trailFeedback/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && hasResearchConsent() && isValidTrailFeedback(userId);
       allow update: if false;
       allow delete: if false;
     }

@@ -2,11 +2,12 @@ import { FirebaseError } from 'firebase/app'
 import { Timestamp } from 'firebase/firestore'
 import { onboardingProfileSchema } from '@/features/onboarding/schemas/onboarding.schema'
 import { updateProfileSchema } from '@/features/profile/schemas/profile.schema'
+import { consentDecisionSchema } from '@/features/research/schemas/research.schema'
 import type { LessonWithId, ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument, ProgressMap } from '@/types/progress.types'
 import type { QuizResultDocument } from '@/types/quiz.types'
 import type { SimulationDocument } from '@/types/simulation.types'
-import type { OnboardingProfile, UserDocument } from '@/types/user.types'
+import type { ResearchConsent, RiskBaseline, UserDocument } from '@/types/user.types'
 
 // Firebase em memória pros testes de fluxo: imita o que cada service faz, sem rede e sem SDK.
 
@@ -182,13 +183,22 @@ export const fakeUserService = {
     return document
   },
 
-  async completeOnboarding(uid: string, answers: unknown): Promise<OnboardingProfile> {
-    const profile = onboardingProfileSchema.parse(answers)
-    const existing = state.users.get(uid)
-    if (existing) {
-      state.users.set(uid, { ...existing, onboardingCompleted: true, onboardingProfile: profile })
+  async completeOnboarding(uid: string, answers: unknown, decision: unknown) {
+    const onboardingProfile = onboardingProfileSchema.parse(answers)
+    const { accepted, isAdult, riskPerception } = consentDecisionSchema.parse(decision)
+    const researchConsent: ResearchConsent = {
+      accepted,
+      isAdult,
+      decidedAt: Timestamp.now(),
+      version: 'onboarding-v1',
     }
-    return profile
+    const riskBaseline: RiskBaseline | undefined = riskPerception
+      ? { riskPerception, collectedAfterUse: false }
+      : undefined
+    const fields = { onboardingProfile, researchConsent, ...(riskBaseline ? { riskBaseline } : {}) }
+    const existing = state.users.get(uid)
+    if (existing) state.users.set(uid, { ...existing, onboardingCompleted: true, ...fields })
+    return fields
   },
 
   async updateDisplayName(uid: string, input: unknown) {

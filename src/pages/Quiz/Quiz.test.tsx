@@ -16,6 +16,7 @@ import {
   buildTrail,
 } from '@/test/fixtures/modules'
 import { buildQuestions } from '@/test/fixtures/quiz'
+import type { UserDocument } from '@/types/user.types'
 
 vi.mock('@/hooks/useAuth')
 vi.mock('@/content/quizzes', async (importOriginal) => ({
@@ -29,6 +30,7 @@ vi.mock('@/services/progress.service', () => ({
   markModuleCompleted: vi.fn(),
 }))
 vi.mock('@/services/quiz.service', () => ({ saveQuizResult: vi.fn() }))
+vi.mock('@/services/research.service', () => ({ saveTrailFeedback: vi.fn() }))
 
 const lessons = [buildLesson({ id: 'licao-01' }), buildLesson({ id: 'licao-02', order: 2 })]
 
@@ -143,6 +145,78 @@ describe('Quiz', () => {
 
     await user.click(screen.getByRole('button', { name: 'Refazer quiz' }))
     expect(screen.queryByText('Módulo concluído')).not.toBeInTheDocument()
+  })
+
+  describe('encerramento da trilha', () => {
+    function setUpFinalModule(accepted: boolean | null) {
+      vi.mocked(useAuth).mockReturnValue({
+        user: TEST_USER,
+        userDocument: (accepted === null
+          ? null
+          : { researchConsent: { accepted } }) as UserDocument | null,
+        isInitializing: false,
+        isAuthenticated: true,
+        hasCompletedOnboarding: true,
+      })
+      const trail = buildTrail().map((module) =>
+        module.id === 'modulo-05' ? buildModule({ ...module, hasSimulation: false }) : module
+      )
+      vi.mocked(getModules).mockResolvedValue(trail)
+      const done = buildProgress({
+        lessonsCompleted: ['licao-01', 'licao-02'],
+        quizBestScore: 100,
+        quizAttempts: 1,
+        simulationCompleted: true,
+      })
+      vi.mocked(getUserProgress).mockResolvedValue({
+        'modulo-01': done,
+        'modulo-02': done,
+        'modulo-03': done,
+        'modulo-04': done,
+        'modulo-05': buildProgress({ lessonsCompleted: ['licao-01', 'licao-02'] }),
+      })
+    }
+
+    it('aparece quando quem participa conclui o módulo final, e dá pra pular', async () => {
+      setUpFinalModule(true)
+      const user = userEvent.setup()
+      renderQuiz('modulo-05')
+
+      await answerAll(user, 'Alternativa A')
+
+      expect(await screen.findByText('Antes de ir, quatro perguntas')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Pular' }))
+      expect(screen.queryByText('Antes de ir, quatro perguntas')).not.toBeInTheDocument()
+      expect(screen.getByText('Módulo concluído')).toBeInTheDocument()
+    })
+
+    it('não aparece para quem não participa da pesquisa', async () => {
+      setUpFinalModule(false)
+      const user = userEvent.setup()
+      renderQuiz('modulo-05')
+
+      await answerAll(user, 'Alternativa A')
+
+      expect(await screen.findByText('Módulo concluído')).toBeInTheDocument()
+      expect(screen.queryByText('Antes de ir, quatro perguntas')).not.toBeInTheDocument()
+    })
+
+    it('não aparece ao concluir um módulo que não é o final', async () => {
+      setUpFinalModule(true)
+      vi.mocked(getUserProgress).mockResolvedValue({
+        'modulo-01': buildProgress({
+          lessonsCompleted: ['licao-01', 'licao-02'],
+          simulationCompleted: true,
+        }),
+      })
+      const user = userEvent.setup()
+      renderQuiz('modulo-01')
+
+      await answerAll(user, 'Alternativa A')
+
+      expect(await screen.findByText('Módulo concluído')).toBeInTheDocument()
+      expect(screen.queryByText('Antes de ir, quatro perguntas')).not.toBeInTheDocument()
+    })
   })
 
   it('não marca o módulo como concluído quando reprova', async () => {

@@ -1,0 +1,1 @@
+export { Encerramento } from './Encerramento'

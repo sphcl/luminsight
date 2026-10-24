@@ -80,6 +80,13 @@ function existingUserDocument(): UserDocument {
       scamExperience: 'nao',
       motivation: 'curiosidade',
     },
+    // Conta que já decidiu sobre a pesquisa, senão o aviso único aparece no lugar das telas.
+    researchConsent: {
+      accepted: false,
+      isAdult: false,
+      decidedAt: Timestamp.now(),
+      version: 'onboarding-v1',
+    },
     completedModules: [],
     completedLessons: [],
     completedSimulations: [],
@@ -136,9 +143,13 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
     await user.type(screen.getByLabelText('Confirmar senha'), PASSWORD)
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 
-    expect(await screen.findByText('Passo 1 de 3', {}, FLOW_TIMEOUT)).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Antes de começar' }, FLOW_TIMEOUT)
+    ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/onboarding')
 
+    // Segue sem marcar as caixas: não participa da pesquisa e usa o site igual.
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.click(screen.getByRole('radio', { name: 'Iniciante' }))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.click(screen.getByRole('radio', { name: 'Prefiro não responder' }))
@@ -161,7 +172,9 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
         scamExperience: 'prefiro_nao_responder',
         motivation: 'aprender_basico',
       },
+      researchConsent: { accepted: false, version: 'onboarding-v1' },
     })
+    expect(fakeBackend.getUser(uid)).not.toHaveProperty('riskBaseline')
   })
 
   it('percorre o módulo inteiro e desbloqueia o seguinte', async () => {

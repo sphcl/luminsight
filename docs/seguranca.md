@@ -678,7 +678,99 @@ A solução completa seria um segundo projeto Firebase só para desenvolvimento,
 apontando cada branch para o seu projeto. Para um TCC com poucos usuários, o custo de manter dois
 projetos, dois conjuntos de credenciais e dois seeds não compensa, e a escolha fica registrada aqui.
 
-## 10. Resumo do que ficou de fora
+## 10. Dados da pesquisa do TCC
+
+O modelo de dados da pesquisa (coleções, campos e decisões de medida) está em `docs/modelagem.md`.
+Esta seção trata só do que tem implicação de segurança e privacidade.
+
+### 10.1 Consentimento
+
+Antes das perguntas do onboarding, a pessoa vê um aviso curto: o site faz parte de um TCC, o que é
+coletado (progresso e respostas de quiz e de simulação), que os resultados são publicados só de
+forma agregada e anônima, que participar é opcional e que dá para mudar de ideia no Perfil. São
+duas caixas, as duas desmarcadas por padrão: "Tenho 18 anos ou mais" e "Aceito participar da
+pesquisa". A segunda só fica disponível depois da primeira. Seguir sem marcar nada vale como "não
+participa", e o site funciona inteiro do mesmo jeito.
+
+A decisão fica no documento do usuário em `researchConsent`: `accepted`, `isAdult`, `decidedAt`
+e `version`. As rules exigem que:
+
+- `accepted` só seja verdadeiro junto com `isAdult` verdadeiro;
+- `decidedAt` seja o horário do servidor, nunca uma data enviada pelo cliente;
+- `version` seja a do texto que a pessoa viu.
+
+Idade e data de nascimento nunca são gravadas. `isAdult` é só a declaração.
+
+As 9 contas criadas antes do aviso existir veem uma versão própria do texto (`retroativo-v1`), uma
+única vez, no próximo acesso. Essa versão diz "inclusive o que você já fez aqui", porque essas
+pessoas já têm progresso e respostas gravados. Depois da escolha, o site segue normal.
+
+### 10.2 Minimização travada nas rules
+
+Progresso e resultados de quiz continuam sendo gravados para todo mundo, porque o site precisa
+deles para funcionar. Os dados que existem só para a pesquisa só são gravados para quem aceitou:
+
+- `simulationResults` (decisões dentro das simulações);
+- `trailFeedback` (pós-teste e satisfação);
+- `riskBaseline` (percepção de risco de antes).
+
+Essa regra fica nas rules, e não só num filtro da exportação. A regra lê o documento do usuário e
+nega por padrão: se o documento não existe, ou não tem o campo de consentimento, a gravação é
+recusada. Os testes de rules cobrem os quatro casos: aceitou, recusou, sem o campo e sem documento.
+
+Custo: cada gravação dessas coleções faz duas leituras a mais dentro das rules (o documento do
+usuário e a simulação, ou o progresso do módulo final). Com 30 pessoas, a conta estimada fica em
+torno de 400 leituras no estudo inteiro, menos de 1% da cota diária gratuita de 50 mil leituras do
+plano Spark. A conta detalhada está em `docs/modelagem.md`.
+
+### 10.3 Revogação e exclusão
+
+A pessoa pode sair da pesquisa a qualquer momento pelo Perfil. Antes de confirmar, a tela diz que
+nenhum dado dela entra no trabalho, nem o que já foi gravado, e que o progresso no site continua
+igual. Revogar grava `accepted: false` e não apaga nada: as rules continuam sem update e sem delete
+nas coleções de resultado (decisão da fase 9). Quem revoga deixa de ter registros novos de pesquisa,
+e a exportação deixa a pessoa de fora por completo, olhando a decisão atual de cada conta.
+
+**Pedido de exclusão de verdade.** É feito à mão, por alguém com a credencial de administrador:
+
+1. registrar a data do pedido e o UID, sem copiar dados pessoais para o registro;
+2. apagar, pelo console do Firebase ou pelo Admin SDK, nesta ordem: `trailFeedback/{uid}`, os
+   documentos de `simulationResults` e de `quizResults` com `userId == uid`, a subcoleção
+   `users/{uid}/progress`, o documento `users/{uid}` e a conta no Authentication;
+3. conferir que nenhuma das consultas acima devolve mais nada.
+
+Não existe botão de exclusão no site de propósito. Uma exclusão feita pelo cliente exigiria abrir
+delete nas rules, e isso permitiria apagar resultados para esconder tentativas.
+
+### 10.4 Limitação aceita: conteúdo das listas e acertos declarados pelo cliente
+
+**Limitação.** As rules não conseguem percorrer uma lista. Em `simulationResults`, elas validam que
+`decisions` é uma lista com o tamanho igual a `totalDecisions` e que `correctDecisions` não passa
+do total, mas não validam o formato de cada item nem se `isCorrect` é verdade. É a mesma limitação
+de `quizResults.answers` e do progresso gravado pelo cliente (seção 4).
+
+**Impacto real.** Quem abrir o console do navegador consegue gravar uma tentativa de simulação
+inventada na própria conta, com mais acertos do que teve. O dado de outra pessoa continua
+protegido. O efeito é ruído nos números da pesquisa, vindo de um participante que agiu de má-fé
+contra a própria participação.
+
+**Por que aceitamos.** A correção completa é a mesma da seção 4: mover a correção para Cloud
+Functions, que exige o plano pago. Para uma amostra pequena e conhecida, o risco de alguém forjar
+resultado de pesquisa pelo console é baixo, e os dados ficam conferíveis: cada decisão gravada
+aponta para uma cena e uma opção que existem no conteúdo, e a exportação pode recalcular o acerto
+pelo gabarito e descartar o que não bater.
+
+**Quando rever.** Se o site passar a ter participantes desconhecidos em escala, ou se a exportação
+encontrar decisões que não batem com o gabarito, a correção precisa ir para o servidor.
+
+### 10.5 Comentário livre
+
+O comentário da pesquisa final é o único texto livre do site. As rules e o schema limitam a 500
+caracteres, e ele é tratado como dado não confiável em qualquer lugar onde aparecer: na tela, o
+React já exibe como texto; na exportação, o valor precisa ser neutralizado contra fórmula de
+planilha (texto começando com `=`, `+`, `-` ou `@`) antes de ir para CSV.
+
+## 11. Resumo do que ficou de fora
 
 | Item | Motivo | Caminho para resolver |
 | --- | --- | --- |
@@ -689,3 +781,5 @@ projetos, dois conjuntos de credenciais e dois seeds não compensa, e a escolha 
 | Registro de eventos de segurança | Exige processamento no servidor | Cloud Functions e Cloud Logging |
 | Subresource Integrity no Google Fonts | CSS gerado dinamicamente pelo Google | Hospedar a fonte no próprio domínio |
 | Desenvolvimento e produção no mesmo banco | Custo de manter dois projetos Firebase | Projeto separado para desenvolvimento |
+| Conteúdo das decisões e acertos de simulação declarados pelo cliente | Exige correção no servidor | Cloud Functions (plano Blaze) |
+| Exclusão de dados pelo próprio usuário | Exigiria abrir delete nas rules | Procedimento manual (seção 10.3) |

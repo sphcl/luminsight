@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type * as FirestoreModule from 'firebase/firestore'
 import {
+  changeResearchConsent,
   createUserDocument,
   ensureUserDocument,
   completeOnboarding,
+  recordLateConsent,
   updateDisplayName,
 } from './user.service'
+import { dismissTrailFeedback, saveSimulationResult, saveTrailFeedback } from './research.service'
 import {
   markLessonCompleted,
   markModuleCompleted,
@@ -96,10 +99,19 @@ const allowed = {
   userCreate: firstList(functionBody('isValidUserCreate'), 'hasOnly(['),
   loginUpdate: firstList(functionBody('isLoginUpdate'), 'hasOnly(['),
   onboarding: firstList(functionBody('isOnboardingCompletion'), 'hasOnly(['),
+  onboardingWithConsent: firstList(functionBody('isOnboardingWithConsent'), 'hasOnly(['),
   displayName: firstList(functionBody('isDisplayNameUpdate'), 'hasOnly(['),
   progress: firstList(functionBody('progressKeys'), 'return ['),
   quizResult: firstList(functionBody('isValidQuizResult'), 'hasOnly(['),
+  lateConsent: firstList(functionBody('isLateConsent'), 'hasOnly(['),
+  consentChange: firstList(functionBody('isConsentChange'), 'hasOnly(['),
+  consentFields: firstList(functionBody('isValidConsent'), 'hasOnly(['),
+  feedbackDismissal: firstList(functionBody('isFeedbackDismissal'), 'hasOnly(['),
+  simulationResult: firstList(functionBody('isValidSimulationResult'), 'hasOnly(['),
+  trailFeedback: firstList(functionBody('isValidTrailFeedback'), 'hasOnly(['),
 }
+
+const PROFILE = { securityKnowledge: 'iniciante', scamExperience: 'nao', motivation: 'curiosidade' }
 
 function keysOf(write: Write | undefined): string[] {
   if (!write) throw new Error('nenhuma escrita registrada')
@@ -154,14 +166,71 @@ describe('escritas do cliente batem com o que as rules aceitam', () => {
     expect(keysOf(writes[0])).toEqual(allowed.userCreate)
   })
 
-  it('onboarding só envia os campos do onboarding', async () => {
-    await completeOnboarding('u1', {
-      securityKnowledge: 'iniciante',
-      scamExperience: 'nao',
-      motivation: 'curiosidade',
+  it('onboarding de quem aceitou envia todos os campos que a regra permite', async () => {
+    await completeOnboarding('u1', PROFILE, {
+      accepted: true,
+      isAdult: true,
+      riskPerception: 'alta',
     })
 
-    expect(keysOf(writes[0])).toEqual(allowed.onboarding)
+    expect(keysOf(writes[0])).toEqual(allowed.onboardingWithConsent)
+  })
+
+  it('onboarding de quem recusou fica sem percepção de risco, ainda dentro da regra', async () => {
+    await completeOnboarding('u1', PROFILE, { accepted: false, isAdult: false })
+
+    expect(keysOf(writes[0])).toEqual(
+      allowed.onboardingWithConsent.filter((key) => key !== 'riskBaseline')
+    )
+  })
+
+  it('o consentimento gravado tem exatamente os campos de isValidConsent', async () => {
+    await completeOnboarding('u1', PROFILE, { accepted: false, isAdult: false })
+
+    expect(Object.keys(writes[0]?.data.researchConsent as object).sort()).toEqual(
+      allowed.consentFields
+    )
+  })
+
+  it('aviso de conta antiga e troca pelo Perfil batem com as regras', async () => {
+    await recordLateConsent('u1', { accepted: true, isAdult: true, riskPerception: 'baixa' })
+    await changeResearchConsent('u1', { accepted: false, isAdult: true })
+    await dismissTrailFeedback('u1')
+
+    expect(keysOf(writes[0])).toEqual(allowed.lateConsent)
+    expect(keysOf(writes[1])).toEqual(allowed.consentChange)
+    expect(keysOf(writes[2])).toEqual(allowed.feedbackDismissal)
+  })
+
+  it('resultado de simulação grava exatamente os campos da regra', async () => {
+    await saveSimulationResult({
+      userId: 'u1',
+      simulationId: 'simulacao-modulo-02',
+      moduleId: 'modulo-02',
+      totalDecisions: 1,
+      correctDecisions: 1,
+      timeSpentSeconds: 30,
+      decisions: [{ sceneId: 'cena-01', selectedOptionId: 'a', isCorrect: true }],
+    })
+
+    expect(writes[0]?.kind).toBe('add')
+    expect(writes[0]?.path).toBe('simulationResults')
+    expect(keysOf(writes[0])).toEqual(allowed.simulationResult)
+  })
+
+  it('pesquisa final grava no documento do próprio uid, e sem comentário o campo nem existe', async () => {
+    const answers = {
+      securityKnowledge: 'avancado',
+      riskPerception: 'muito_alta',
+      satisfaction: 'gostei_muito',
+      mostUseful: ['simulacoes'],
+    }
+    await saveTrailFeedback('u1', { ...answers, comment: 'Muito bom' })
+    await saveTrailFeedback('u1', { ...answers, comment: '   ' })
+
+    expect(writes[0]?.path).toBe('trailFeedback/u1')
+    expect(keysOf(writes[0])).toEqual(allowed.trailFeedback)
+    expect(keysOf(writes[1])).toEqual(allowed.trailFeedback.filter((key) => key !== 'comment'))
   })
 
   it('edição de nome só envia displayName', async () => {

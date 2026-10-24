@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
 import { Timestamp } from 'firebase/firestore'
+import { ResearchConsentSettings } from '@/features/research/components/ResearchConsentSettings'
 import { Badge, Button, Card, Input, Skeleton } from '@/components/ui'
 import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
 import { useAuth } from '@/hooks/useAuth'
@@ -75,6 +76,8 @@ export function Perfil() {
       </Card>
 
       <QuizHistorySection />
+
+      <ResearchConsentSettings />
 
       <Button
         variant="secondary"

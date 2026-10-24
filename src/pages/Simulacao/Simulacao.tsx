@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { FirebaseError } from 'firebase/app'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Badge, Button, Card, Skeleton } from '@/components/ui'
 import { textLinkClass } from '@/components/ui/linkStyles'
@@ -27,6 +28,7 @@ import {
 import { useSimulationAccess } from '@/features/simulations/hooks/useSimulations'
 import { FORMAT_LABELS } from '@/features/simulations/labels'
 import { markModuleCompleted, markSimulationCompleted } from '@/services/progress.service'
+import { saveSimulationResult } from '@/services/research.service'
 import { mapFirestoreError } from '@/utils/security/errors'
 import type { ModuleWithId } from '@/types/module.types'
 import type { ProgressDocument } from '@/types/progress.types'
@@ -75,11 +77,21 @@ export function Simulacao() {
           uid={user.uid}
           simulation={state.simulation}
           recipientName={getFirstName(userDocument?.displayName ?? user.displayName)}
+          participatesInResearch={userDocument?.researchConsent?.accepted === true}
           module={state.module}
           progress={state.progress}
         />
       )
   }
+}
+
+// Sem uid nem nome: só o bastante pra eu achar a perda testando no staging.
+function reportLostResearchRecord(simulationId: string, error: unknown) {
+  const code = error instanceof FirebaseError ? error.code : 'desconhecido'
+  console.error(`[pesquisa] simulationResults não gravado depois de 2 tentativas`, {
+    simulationId,
+    code,
+  })
 }
 
 interface SimulationSessionProps {
@@ -88,6 +100,7 @@ interface SimulationSessionProps {
   recipientName: string
   module: ModuleWithId
   progress: ProgressDocument | undefined
+  participatesInResearch: boolean
 }
 
 type Phase = 'intro' | 'running' | 'result'
@@ -98,6 +111,7 @@ function SimulationSession({
   recipientName,
   module,
   progress,
+  participatesInResearch,
 }: SimulationSessionProps) {
   useDocumentTitle(rawSimulation.title)
   // Memo pra engine não receber cenas novas a cada render e reiniciar o timer das mensagens.
@@ -112,7 +126,7 @@ function SimulationSession({
   const [isModuleMarked, setIsModuleMarked] = useState((progress?.completedAt ?? null) !== null)
   const [justCompletedModule, setJustCompletedModule] = useState(false)
 
-  async function persistCompletion() {
+  async function persistCompletion(result: SimulationSummary) {
     setSaveStatus('saving')
     try {
       await markSimulationCompleted(uid, module.id)
@@ -132,12 +146,40 @@ function SimulationSession({
       mapFirestoreError(caughtError)
       setSaveStatus('error')
     }
+
+    if (participatesInResearch) await persistResearchResult(result)
+  }
+
+  // Separado do progresso: a pessoa nunca vê erro, mas uma falha dupla fica no console até no build de produção.
+  async function persistResearchResult(result: SimulationSummary) {
+    const record = {
+      userId: uid,
+      simulationId: rawSimulation.id,
+      moduleId: module.id,
+      totalDecisions: result.totalDecisions,
+      correctDecisions: result.correctDecisions,
+      timeSpentSeconds: result.timeSpentSeconds,
+      decisions: result.decisions.map(({ sceneId, selectedOptionId, isCorrect }) => ({
+        sceneId,
+        selectedOptionId,
+        isCorrect,
+      })),
+    }
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await saveSimulationResult(record)
+        return
+      } catch (caughtError) {
+        if (attempt === 2) reportLostResearchRecord(rawSimulation.id, caughtError)
+      }
+    }
   }
 
   function handleFinish(result: SimulationSummary) {
     setSummary(result)
     setPhase('result')
-    void persistCompletion()
+    void persistCompletion(result)
   }
 
   function handleRetry() {

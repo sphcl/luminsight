@@ -13,6 +13,10 @@ vi.mock('@/hooks/useAuth')
 vi.mock('@/services/modules.service', () => ({ getModules: vi.fn(), getLessons: vi.fn() }))
 vi.mock('@/services/progress.service', () => ({ getUserProgress: vi.fn() }))
 vi.mock('@/services/simulations.service', () => ({ getSimulations: vi.fn() }))
+vi.mock('@/services/research.service', () => ({
+  hasTrailFeedback: vi.fn(),
+  dismissTrailFeedback: vi.fn(),
+}))
 
 function renderDashboard() {
   return render(
