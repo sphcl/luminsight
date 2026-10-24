@@ -38,7 +38,11 @@ banco.
 | `accepted` | bool | só pode ser verdadeiro com `isAdult` verdadeiro |
 | `isAdult` | bool | declaração de ter 18 anos ou mais; idade nunca é gravada |
 | `decidedAt` | timestamp do servidor | horário da última decisão |
-| `version` | `onboarding-v1` ou `retroativo-v1` | qual texto a pessoa viu (`src/content/research.ts`) |
+| `version` | `onboarding-v2` ou `retroativo-v2` | qual texto a pessoa viu (`src/content/research.ts`) |
+
+A v1 dos dois textos tinha uma linha de contato que nunca recebeu o e-mail real, e foi retirada
+antes de qualquer pessoa ver o aviso. Por isso nenhum documento tem `onboarding-v1` ou
+`retroativo-v1`: a v2 é a primeira versão mostrada.
 
 A decisão que vale é a atual. Quem revogou e depois aceitou de novo está dentro; quem aceitou e
 depois revogou está fora, inclusive do que gravou antes de revogar.

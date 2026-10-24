@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ZodError } from 'zod'
 import { Button, Card, ProgressBar } from '@/components/ui'
 import { ROUTES } from '@/constants/routes'
 import { CONSENT_TEXTS } from '@/content/research'
@@ -11,6 +10,7 @@ import {
   SECURITY_KNOWLEDGE_OPTIONS,
 } from '@/features/onboarding/schemas/onboarding.schema'
 import { ChoiceQuestion } from '@/features/research/components/ChoiceQuestion'
+import { reportResearchFailure } from '@/features/research/reportResearchFailure'
 import { ConsentForm, type ConsentChoice } from '@/features/research/components/ConsentForm'
 import {
   RISK_PERCEPTION_OPTIONS,
@@ -18,7 +18,6 @@ import {
 } from '@/features/research/schemas/research.schema'
 import { completeOnboarding } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
-import { mapFirestoreError } from '@/utils/security/errors'
 import { cn } from '@/utils/helpers/classnames'
 import type { OnboardingProfile, RiskPerception } from '@/types/user.types'
 
@@ -113,12 +112,10 @@ export function Onboarding() {
       }
       navigate(ROUTES.DASHBOARD, { replace: true })
     } catch (caughtError) {
-      if (caughtError instanceof ZodError) {
-        setError('Revise suas respostas e tente de novo.')
-      } else {
-        mapFirestoreError(caughtError)
-        setError('Não foi possível salvar suas respostas. Tente novamente.')
-      }
+      reportResearchFailure('onboarding com consentimento', caughtError)
+      setError(
+        'Não conseguimos salvar suas respostas agora. Elas continuam aqui; tente concluir de novo.'
+      )
       setIsSaving(false)
     }
   }
@@ -133,7 +130,7 @@ export function Onboarding() {
           </p>
         </div>
       ) : (
-        <ConsentForm text={CONSENT_TEXTS['onboarding-v1']} value={consent} onChange={setConsent} />
+        <ConsentForm text={CONSENT_TEXTS['onboarding-v2']} value={consent} onChange={setConsent} />
       )}
 
       <ProgressBar

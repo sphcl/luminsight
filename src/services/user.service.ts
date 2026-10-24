@@ -97,7 +97,7 @@ export async function completeOnboarding(
   decision: unknown
 ): Promise<{ onboardingProfile: OnboardingProfile } & ConsentFields> {
   const onboardingProfile = onboardingProfileSchema.parse(answers)
-  const fields = { onboardingProfile, ...consentFields(decision, 'onboarding-v1', false) }
+  const fields = { onboardingProfile, ...consentFields(decision, 'onboarding-v2', false) }
 
   await updateDoc(doc(db, USERS_COLLECTION, uid), { onboardingCompleted: true, ...fields })
 
@@ -106,7 +106,7 @@ export async function completeOnboarding(
 
 // Conta criada antes do aviso: decide uma vez, e o "antes" fica marcado como coletado depois de usar.
 export async function recordLateConsent(uid: string, decision: unknown): Promise<ConsentFields> {
-  const fields = consentFields(decision, 'retroativo-v1', true)
+  const fields = consentFields(decision, 'retroativo-v2', true)
   await updateDoc(doc(db, USERS_COLLECTION, uid), { ...fields })
   return fields
 }
@@ -118,7 +118,7 @@ export async function changeResearchConsent(uid: string, input: unknown): Promis
     accepted,
     isAdult,
     decidedAt: serverTimestamp(),
-    version: 'retroativo-v1',
+    version: 'retroativo-v2',
   }
 
   await updateDoc(doc(db, USERS_COLLECTION, uid), { researchConsent })

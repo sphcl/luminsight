@@ -43,7 +43,7 @@ describe('completeOnboarding', () => {
           accepted: false,
           isAdult: false,
           decidedAt: serverTimestamp(),
-          version: 'onboarding-v1',
+          version: 'onboarding-v2',
         },
       }
     )
@@ -57,7 +57,7 @@ describe('completeOnboarding', () => {
     )
 
     expect(vi.mocked(updateDoc).mock.calls[0]?.[1]).toMatchObject({
-      researchConsent: { accepted: true, isAdult: true, version: 'onboarding-v1' },
+      researchConsent: { accepted: true, isAdult: true, version: 'onboarding-v2' },
       riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
     })
   })
@@ -118,7 +118,7 @@ describe('recordLateConsent', () => {
           accepted: true,
           isAdult: true,
           decidedAt: serverTimestamp(),
-          version: 'retroativo-v1',
+          version: 'retroativo-v2',
         },
         riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
       }
@@ -143,7 +143,7 @@ describe('changeResearchConsent', () => {
           accepted: false,
           isAdult: true,
           decidedAt: serverTimestamp(),
-          version: 'retroativo-v1',
+          version: 'retroativo-v2',
         },
       }
     )

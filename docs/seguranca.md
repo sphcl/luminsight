@@ -701,7 +701,7 @@ e `version`. As rules exigem que:
 
 Idade e data de nascimento nunca são gravadas. `isAdult` é só a declaração.
 
-As 9 contas criadas antes do aviso existir veem uma versão própria do texto (`retroativo-v1`), uma
+As 9 contas criadas antes do aviso existir veem uma versão própria do texto (`retroativo-v2`), uma
 única vez, no próximo acesso. Essa versão diz "inclusive o que você já fez aqui", porque essas
 pessoas já têm progresso e respostas gravados. Depois da escolha, o site segue normal.
 

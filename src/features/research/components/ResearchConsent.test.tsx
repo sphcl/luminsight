@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { serverTimestamp, Timestamp } from 'firebase/firestore'
+import { FirebaseError } from 'firebase/app'
 import { AppLayout } from '@/components/layout'
 import { useAuth } from '@/hooks/useAuth'
 import { changeResearchConsent, recordLateConsent } from '@/services/user.service'
@@ -28,7 +29,7 @@ const consent = (accepted: boolean): ResearchConsent => ({
   accepted,
   isAdult: accepted,
   decidedAt: Timestamp.fromDate(new Date('2026-10-01')),
-  version: 'onboarding-v1',
+  version: 'onboarding-v2',
 })
 
 function signIn(document: Partial<UserDocument>) {
@@ -85,7 +86,7 @@ describe('aviso único para quem já tinha conta', () => {
       researchConsent: {
         ...consent(false),
         decidedAt: serverTimestamp(),
-        version: 'retroativo-v1',
+        version: 'retroativo-v2',
       },
     })
     const user = userEvent.setup()
@@ -103,7 +104,7 @@ describe('aviso único para quem já tinha conta', () => {
   it('aceitar exige a percepção de risco antes de confirmar', async () => {
     signIn({})
     vi.mocked(recordLateConsent).mockResolvedValue({
-      researchConsent: { ...consent(true), decidedAt: serverTimestamp(), version: 'retroativo-v1' },
+      researchConsent: { ...consent(true), decidedAt: serverTimestamp(), version: 'retroativo-v2' },
       riskBaseline: { riskPerception: 'muito_alta', collectedAfterUse: true },
     })
     const user = userEvent.setup()
@@ -125,12 +126,63 @@ describe('aviso único para quem já tinha conta', () => {
   })
 })
 
+describe('falha ao gravar no aviso único', () => {
+  it('não oferece "Decidir depois" antes de uma falha', () => {
+    signIn({})
+    renderLayout()
+
+    expect(screen.queryByRole('button', { name: 'Decidir depois' })).not.toBeInTheDocument()
+  })
+
+  it('depois de uma falha, "Decidir depois" libera o site sem gravar nada', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    signIn({})
+    vi.mocked(recordLateConsent).mockRejectedValue(new FirebaseError('permission-denied', 'x'))
+    const user = userEvent.setup()
+    renderLayout()
+
+    await user.click(screen.getByRole('button', { name: 'Continuar sem participar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não conseguimos salvar sua escolha agora. O que você marcou continua aqui.'
+    )
+    expect(consoleError).toHaveBeenCalledWith(
+      '[pesquisa] consentimento (aviso único) não gravado',
+      {
+        tipo: 'recusa_do_banco',
+        codigo: 'permission-denied',
+      }
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Decidir depois' }))
+    expect(screen.getByText('conteúdo do painel')).toBeInTheDocument()
+    expect(useAuthStore.getState().userDocument?.researchConsent).toBeUndefined()
+    consoleError.mockRestore()
+  })
+
+  it('"Decidir depois" vale só em memória: montar o layout de novo traz o aviso de volta', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    signIn({})
+    vi.mocked(recordLateConsent).mockRejectedValue(new FirebaseError('unavailable', 'x'))
+    const user = userEvent.setup()
+    const { unmount } = renderLayout()
+    await user.click(screen.getByRole('button', { name: 'Continuar sem participar' }))
+    await user.click(await screen.findByRole('button', { name: 'Decidir depois' }))
+    unmount()
+
+    renderLayout()
+
+    expect(screen.getByText(/inclusive o que você já fez aqui/)).toBeInTheDocument()
+    vi.restoreAllMocks()
+  })
+})
+
 describe('pesquisa no Perfil', () => {
   it('sair da pesquisa explica antes que nada do que já foi gravado entra no trabalho', async () => {
     signIn({ researchConsent: consent(true) })
     vi.mocked(changeResearchConsent).mockResolvedValue({
       ...consent(false),
-      version: 'retroativo-v1',
+      version: 'retroativo-v2',
     })
     const user = userEvent.setup()
     render(<ResearchConsentSettings />)
@@ -150,7 +202,7 @@ describe('pesquisa no Perfil', () => {
     signIn({ researchConsent: consent(false) })
     vi.mocked(changeResearchConsent).mockResolvedValue({
       ...consent(true),
-      version: 'retroativo-v1',
+      version: 'retroativo-v2',
     })
     const user = userEvent.setup()
     render(<ResearchConsentSettings />)
@@ -167,6 +219,28 @@ describe('pesquisa no Perfil', () => {
       isAdult: true,
       accepted: true,
     })
+  })
+})
+
+describe('falha ao gravar no Perfil', () => {
+  it('mostra a frase nova e registra o tipo da falha', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    signIn({ researchConsent: consent(true) })
+    vi.mocked(changeResearchConsent).mockRejectedValue(new FirebaseError('permission-denied', 'x'))
+    const user = userEvent.setup()
+    render(<ResearchConsentSettings />)
+
+    await user.click(screen.getByRole('button', { name: 'Sair da pesquisa' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar saída' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não conseguimos salvar sua escolha agora. Tente de novo daqui a pouco.'
+    )
+    expect(consoleError).toHaveBeenCalledWith('[pesquisa] consentimento (Perfil) não gravado', {
+      tipo: 'recusa_do_banco',
+      codigo: 'permission-denied',
+    })
+    consoleError.mockRestore()
   })
 })
 

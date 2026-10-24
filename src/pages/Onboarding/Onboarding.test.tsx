@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { serverTimestamp } from 'firebase/firestore'
+import { FirebaseError } from 'firebase/app'
 import { Onboarding } from './Onboarding'
 import { useAuth } from '@/hooks/useAuth'
 import { completeOnboarding } from '@/services/user.service'
@@ -113,7 +114,7 @@ describe('Onboarding', () => {
         accepted: false,
         isAdult: false,
         decidedAt: serverTimestamp(),
-        version: 'onboarding-v1',
+        version: 'onboarding-v2',
       },
     })
     const user = userEvent.setup()
@@ -136,7 +137,7 @@ describe('Onboarding', () => {
         accepted: true,
         isAdult: true,
         decidedAt: serverTimestamp(),
-        version: 'onboarding-v1',
+        version: 'onboarding-v2',
       },
       riskBaseline: { riskPerception: 'alta', collectedAfterUse: false },
     })
@@ -204,9 +205,9 @@ describe('Onboarding', () => {
     expect(screen.getByRole('radio', { name: 'Avançado' })).toBeChecked()
   })
 
-  it('mostra mensagem genérica quando a gravação falha', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.mocked(completeOnboarding).mockRejectedValue(new Error('permission-denied'))
+  it('falha ao gravar mostra uma frase só, mantém as respostas e registra o tipo no console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(completeOnboarding).mockRejectedValue(new FirebaseError('permission-denied', 'x'))
     const user = userEvent.setup()
     renderOnboarding()
 
@@ -214,10 +215,43 @@ describe('Onboarding', () => {
     await user.click(screen.getByRole('button', { name: 'Concluir' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Não foi possível salvar suas respostas'
+      'Não conseguimos salvar suas respostas agora. Elas continuam aqui; tente concluir de novo.'
     )
-    expect(screen.queryByText(/permission-denied/)).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Proteger a família' })).toBeChecked()
+    expect(consoleError).toHaveBeenCalledWith(
+      '[pesquisa] onboarding com consentimento não gravado',
+      {
+        tipo: 'recusa_do_banco',
+        codigo: 'permission-denied',
+      }
+    )
     expect(screen.queryByText('Página do dashboard')).not.toBeInTheDocument()
+    vi.restoreAllMocks()
+  })
+
+  it('erro de validação aparece com a mesma frase pra quem usa, mas outro tipo no console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { z } = await import('zod')
+    const zodError = z
+      .object({ riskPerception: z.enum(['alta']) })
+      .safeParse({ riskPerception: 'media' }).error
+    vi.mocked(completeOnboarding).mockRejectedValue(zodError)
+    const user = userEvent.setup()
+    renderOnboarding()
+
+    await answerAll(user)
+    await user.click(screen.getByRole('button', { name: 'Concluir' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não conseguimos salvar suas respostas agora.'
+    )
+    expect(consoleError).toHaveBeenCalledWith(
+      '[pesquisa] onboarding com consentimento não gravado',
+      {
+        tipo: 'validacao',
+        codigo: 'riskPerception:invalid_value',
+      }
+    )
     vi.restoreAllMocks()
   })
 })

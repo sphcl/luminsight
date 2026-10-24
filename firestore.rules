@@ -121,7 +121,7 @@ service cloud.firestore {
       return changedUserKeys().hasOnly([
           'onboardingCompleted', 'onboardingProfile', 'researchConsent', 'riskBaseline'
         ])
-        && isValidConsent(data.researchConsent, 'onboarding-v1')
+        && isValidConsent(data.researchConsent, 'onboarding-v2')
         && hasBaselineOnlyIfConsented(data, false);
     }
 
@@ -168,7 +168,7 @@ service cloud.firestore {
         && !('researchConsent' in resource.data)
         && !('riskBaseline' in resource.data)
         && changedUserKeys().hasOnly(['researchConsent', 'riskBaseline'])
-        && isValidConsent(data.researchConsent, 'retroativo-v1')
+        && isValidConsent(data.researchConsent, 'retroativo-v2')
         && hasBaselineOnlyIfConsented(data, true);
     }
 
@@ -176,7 +176,7 @@ service cloud.firestore {
     function isConsentChange() {
       return 'researchConsent' in resource.data
         && changedUserKeys().hasOnly(['researchConsent'])
-        && isValidConsent(request.resource.data.researchConsent, 'retroativo-v1');
+        && isValidConsent(request.resource.data.researchConsent, 'retroativo-v2');
     }
 
     function isFeedbackDismissal() {

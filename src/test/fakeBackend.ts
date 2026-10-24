@@ -190,7 +190,7 @@ export const fakeUserService = {
       accepted,
       isAdult,
       decidedAt: Timestamp.now(),
-      version: 'onboarding-v1',
+      version: 'onboarding-v2',
     }
     const riskBaseline: RiskBaseline | undefined = riskPerception
       ? { riskPerception, collectedAfterUse: false }

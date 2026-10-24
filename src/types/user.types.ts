@@ -23,7 +23,7 @@ export interface UserDocument {
   trailFeedbackDismissedAt?: Timestamp | FieldValue
 }
 
-export type ConsentVersion = 'onboarding-v1' | 'retroativo-v1'
+export type ConsentVersion = 'onboarding-v2' | 'retroativo-v2'
 
 // Idade nunca é gravada: isAdult é só a declaração de ter 18 anos ou mais.
 export interface ResearchConsent {

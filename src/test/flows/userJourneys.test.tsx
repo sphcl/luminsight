@@ -85,7 +85,7 @@ function existingUserDocument(): UserDocument {
       accepted: false,
       isAdult: false,
       decidedAt: Timestamp.now(),
-      version: 'onboarding-v1',
+      version: 'onboarding-v2',
     },
     completedModules: [],
     completedLessons: [],
@@ -172,7 +172,7 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
         scamExperience: 'prefiro_nao_responder',
         motivation: 'aprender_basico',
       },
-      researchConsent: { accepted: false, version: 'onboarding-v1' },
+      researchConsent: { accepted: false, version: 'onboarding-v2' },
     })
     expect(fakeBackend.getUser(uid)).not.toHaveProperty('riskBaseline')
   })

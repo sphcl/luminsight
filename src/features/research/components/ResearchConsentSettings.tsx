@@ -4,7 +4,7 @@ import { CONSENT_TEXTS } from '@/content/research'
 import { useAuth } from '@/hooks/useAuth'
 import { changeResearchConsent } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
-import { mapFirestoreError } from '@/utils/security/errors'
+import { reportResearchFailure } from '../reportResearchFailure'
 import { ConsentForm, type ConsentChoice } from './ConsentForm'
 
 // Revogar não apaga nada no banco: tira a pessoa da exportação, inclusive do que já foi gravado.
@@ -28,8 +28,8 @@ export function ResearchConsentSettings() {
       setIsEditing(false)
       setChoice({ isAdult: false, accepted: false })
     } catch (caughtError) {
-      mapFirestoreError(caughtError)
-      setError('Não foi possível salvar sua escolha. Tente novamente.')
+      reportResearchFailure('consentimento (Perfil)', caughtError)
+      setError('Não conseguimos salvar sua escolha agora. Tente de novo daqui a pouco.')
     } finally {
       setIsSaving(false)
     }
@@ -77,7 +77,7 @@ export function ResearchConsentSettings() {
         {isEditing && !participates && (
           <div className="flex flex-col gap-4 border-t border-rule pt-4">
             <ConsentForm
-              text={CONSENT_TEXTS['retroativo-v1']}
+              text={CONSENT_TEXTS['retroativo-v2']}
               value={choice}
               onChange={setChoice}
               headingLevel="h2"

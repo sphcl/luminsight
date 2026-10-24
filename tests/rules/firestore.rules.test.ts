@@ -107,7 +107,7 @@ function consent(overrides: DocumentData = {}) {
     accepted: true,
     isAdult: true,
     decidedAt: serverTimestamp(),
-    version: 'onboarding-v1',
+    version: 'onboarding-v2',
     ...overrides,
   }
 }
@@ -123,7 +123,7 @@ function storedConsent(accepted: boolean) {
     accepted,
     isAdult: accepted,
     decidedAt: Timestamp.fromDate(new Date('2026-01-01')),
-    version: 'onboarding-v1',
+    version: 'onboarding-v2',
   }
 }
 
@@ -681,7 +681,7 @@ describe('consentimento da pesquisa', () => {
     await seed(alicePath, onboardedAlice())
     await assertFails(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1' }),
+        researchConsent: consent({ version: 'retroativo-v2' }),
         riskBaseline: { riskPerception: 'alta', collectedAfterUse: false },
       })
     )
@@ -691,7 +691,7 @@ describe('consentimento da pesquisa', () => {
     await seed(alicePath, onboardedAlice())
     await assertSucceeds(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1' }),
+        researchConsent: consent({ version: 'retroativo-v2' }),
         riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
       })
     )
@@ -701,7 +701,7 @@ describe('consentimento da pesquisa', () => {
     await seed(alicePath, onboardedAlice())
     await assertFails(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1' }),
+        researchConsent: consent({ version: 'retroativo-v2' }),
         riskBaseline: { riskPerception: 'media', collectedAfterUse: true },
       })
     )
@@ -712,7 +712,7 @@ describe('consentimento da pesquisa', () => {
     await assertFails(
       updateDoc(doc(dbAs(ALICE), alicePath), {
         researchConsent: consent({
-          version: 'retroativo-v1',
+          version: 'retroativo-v2',
           accepted: false,
           isAdult: false,
           decidedAt: Timestamp.fromDate(new Date('2025-01-01')),
@@ -729,7 +729,7 @@ describe('consentimento da pesquisa', () => {
     })
     await assertSucceeds(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ accepted: false, version: 'retroativo-v1' }),
+        researchConsent: consent({ accepted: false, version: 'retroativo-v2' }),
       })
     )
   })
@@ -742,7 +742,7 @@ describe('consentimento da pesquisa', () => {
     })
     await assertFails(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1' }),
+        researchConsent: consent({ version: 'retroativo-v2' }),
         riskBaseline: { riskPerception: 'baixa', collectedAfterUse: false },
       })
     )
@@ -1026,7 +1026,7 @@ describe('transição: consentimento ainda opcional no onboarding', () => {
     )
     await assertSucceeds(
       updateDoc(doc(db, alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1' }),
+        researchConsent: consent({ version: 'retroativo-v2' }),
         riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
       })
     )
@@ -1073,7 +1073,7 @@ describe('versão apertada: consentimento obrigatório no onboarding', () => {
     )
     await assertSucceeds(
       updateDoc(doc(dbAs(ALICE), alicePath), {
-        researchConsent: consent({ version: 'retroativo-v1', accepted: false, isAdult: false }),
+        researchConsent: consent({ version: 'retroativo-v2', accepted: false, isAdult: false }),
       })
     )
   })
