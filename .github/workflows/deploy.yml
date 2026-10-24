@@ -20,7 +20,7 @@ jobs:
     # O environment segura o job até alguém aprovar e só ele enxerga a credencial de produção.
     environment:
       name: production
-      url: https://luminsight-8a8dc.web.app
+      url: https://luminsight-tcc.web.app
     concurrency:
       group: deploy-production
       cancel-in-progress: false

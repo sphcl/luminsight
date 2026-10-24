@@ -100,10 +100,10 @@ service cloud.firestore {
         && isServerTimestamp(request.resource.data.lastLoginAt);
     }
 
-    // Transição: enquanto for false, o onboarding antigo (sem consentimento) ainda passa, pro site
-    // no ar não quebrar antes do código novo chegar. Virar true é a única mudança do PR que aperta.
+    // Chave de transição: em false, o onboarding antigo (sem consentimento) volta a passar. Fica true;
+    // só voltaria pra false se código sem o aviso de pesquisa precisasse rodar contra este banco.
     function consentRequired() {
-      return false;
+      return true;
     }
 
     // Formato antigo primeiro: o write-allowlist.test lê a primeira lista desta função.

@@ -29,16 +29,6 @@ const BOB = { uid: 'bob', email: 'bob@example.com' }
 let testEnv: RulesTestEnvironment
 
 const RULES = readFileSync('firestore.rules', 'utf-8')
-const CONSENT_SWITCH = /function consentRequired\(\) \{\s*return false;\s*\}/
-
-// Gera a versão que o PR de aperto vai publicar, pra ela já estar testada antes de existir.
-function strictRules(): string {
-  if (!CONSENT_SWITCH.test(RULES)) {
-    throw new Error('consentRequired() não está mais como "return false" no firestore.rules')
-  }
-  return RULES.replace(CONSENT_SWITCH, 'function consentRequired() {\n      return true;\n    }')
-}
-
 function dbAs(user: { uid: string; email: string }): Firestore {
   return testEnv
     .authenticatedContext(user.uid, { email: user.email })
@@ -991,12 +981,12 @@ describe('catch-all', () => {
   })
 })
 
-describe('transição: consentimento ainda opcional no onboarding', () => {
+describe('consentimento obrigatório no onboarding', () => {
   const alicePath = `users/${ALICE.uid}`
 
-  it('aceita o onboarding antigo, sem consentimento, pro site no ar não quebrar', async () => {
+  it('recusa o onboarding antigo, sem decidir o consentimento', async () => {
     await seed(alicePath, storedUserDocument())
-    await assertSucceeds(
+    await assertFails(
       updateDoc(doc(dbAs(ALICE), alicePath), {
         onboardingCompleted: true,
         onboardingProfile: ONBOARDING_PROFILE,
@@ -1015,46 +1005,6 @@ describe('transição: consentimento ainda opcional no onboarding', () => {
     )
   })
 
-  it('conta que entrou pelo formato antigo cai no aviso único depois', async () => {
-    await seed(alicePath, storedUserDocument())
-    const db = dbAs(ALICE)
-    await assertSucceeds(
-      updateDoc(doc(db, alicePath), {
-        onboardingCompleted: true,
-        onboardingProfile: ONBOARDING_PROFILE,
-      })
-    )
-    await assertSucceeds(
-      updateDoc(doc(db, alicePath), {
-        researchConsent: consent({ version: 'retroativo-v2' }),
-        riskBaseline: { riskPerception: 'alta', collectedAfterUse: true },
-      })
-    )
-  })
-})
-
-// Fica por último porque troca as rules do ambiente pelas da versão apertada.
-describe('versão apertada: consentimento obrigatório no onboarding', () => {
-  const alicePath = `users/${ALICE.uid}`
-
-  beforeAll(async () => {
-    await testEnv.cleanup()
-    testEnv = await initializeTestEnvironment({
-      projectId: 'demo-luminsight',
-      firestore: { rules: strictRules() },
-    })
-  })
-
-  it('bloqueia concluir o onboarding sem decidir o consentimento', async () => {
-    await seed(alicePath, storedUserDocument())
-    await assertFails(
-      updateDoc(doc(dbAs(ALICE), alicePath), {
-        onboardingCompleted: true,
-        onboardingProfile: ONBOARDING_PROFILE,
-      })
-    )
-  })
-
   it('continua aceitando quem decidiu, aceitando ou recusando', async () => {
     await seed(alicePath, storedUserDocument())
     await assertSucceeds(
@@ -1066,7 +1016,7 @@ describe('versão apertada: consentimento obrigatório no onboarding', () => {
     )
   })
 
-  it('aviso único das contas antigas continua funcionando', async () => {
+  it('conta que entrou na transição, sem consentimento, ainda consegue decidir pelo aviso único', async () => {
     await seed(
       alicePath,
       storedUserDocument({ onboardingCompleted: true, onboardingProfile: ONBOARDING_PROFILE })

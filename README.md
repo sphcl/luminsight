@@ -1,82 +1,121 @@
 # LumInsight
 
-Site interativo de sensibilização sobre golpes digitais com IA e Engenharia Social.
+Trilha gratuita sobre engenharia social, phishing e golpes com inteligência artificial, com lições
+curtas, quizzes e simulações para treinar sem risco. O LumInsight é o Trabalho de Conclusão de Curso
+de um grupo de Segurança da Informação.
 
-## Sobre o projeto
+**Site:** https://luminsight-tcc.web.app
 
-O LumInsight é uma plataforma educacional gamificada que ensina usuários a identificar e evitar golpes digitais envolvendo Inteligência Artificial e Engenharia Social. Desenvolvido como Trabalho de Conclusão de Curso em Segurança da Informação, Fatec São Caetano do Sul.
+## O que o site faz
+
+A pessoa cria uma conta, responde três perguntas sobre o próprio ponto de partida e percorre cinco
+módulos em sequência. Cada módulo tem lições curtas com tempo mínimo de leitura e um quiz; os
+módulos 2, 3 e 4 têm também uma simulação de golpe, por e-mail, ligação ou chat, com contatos
+fictícios e um aviso fixo de simulação na tela. O site tem tema claro e escuro, tamanho de fonte
+ajustável e foi medido para funcionar em celulares de 390 px de largura.
+
+Quem aceita participar da pesquisa do TCC tem o progresso, as respostas e as decisões nas simulações
+usados de forma agregada e anônima no capítulo de Resultados. Participar é opcional e só vale para
+quem tem 18 anos ou mais; quem não participa usa o site inteiro do mesmo jeito.
 
 ## Stack
 
-- **Frontend:** React 18 + TypeScript + Vite
-- **Estilização:** Tailwind CSS
-- **Estado global:** Zustand
-- **Validação:** Zod
-- **Backend/Auth/DB:** Firebase (Auth + Firestore + Hosting)
-- **Testes:** Vitest + React Testing Library
-- **CI/CD:** GitHub Actions
+| Tecnologia | Para quê |
+| --- | --- |
+| React 19 e TypeScript 6 | interface e linguagem |
+| Vite 8 | build e servidor de desenvolvimento |
+| React Router 7 | navegação e guardas de rota |
+| Firebase 12 (Authentication, Firestore e Hosting) | login, banco de dados e hospedagem, sem servidor próprio |
+| Zod 4 | validação de entrada e de tudo que é lido do banco |
+| Zustand 5 | estado da sessão |
+| Tailwind CSS 3 | estilos, sem nenhum estilo inline |
+| Vitest, Testing Library e Firebase Emulator Suite | testes de unidade, de tela e das regras de segurança |
 
-## Instalação
+O porquê de cada escolha está em `docs/arquitetura.md`.
+
+## Como rodar localmente
+
+Requisitos: Node.js 24 (a versão está em `.nvmrc`) e, para os testes das regras, Java 21.
 
 ```bash
-# Clone o repositório
-git clone https://github.com/SEU_USUARIO/luminsight.git
+git clone https://github.com/sphcl/luminsight.git
 cd luminsight
-
-# Instale as dependências
-npm install
-
-# Configure as variáveis de ambiente
-cp .env.example .env
-# Preencha o .env com as chaves do Firebase
-
-# Rode o projeto
+nvm use
+npm ci
+cp .env.example .env   # preencha com a configuração do projeto Firebase
 npm run dev
 ```
 
-## Scripts
+As seis variáveis `VITE_FIREBASE_*` identificam o projeto Firebase. Elas são públicas por natureza e
+vão no código entregue ao navegador; quem protege os dados são as Firestore Rules
+(`docs/seguranca.md`, seção 9.1).
 
-| Comando | Descrição |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm run lint` | Verificação de lint |
-| `npm run type-check` | Verificação de tipos |
-| `npm run test` | Testes em modo watch |
-| `npm run test:run` | Testes uma única vez |
-| `npm run test:coverage` | Cobertura de testes |
-| `npm run seed` | Popula o Firestore com o conteúdo de `src/content/` (ver "Seed do Firestore") |
-| `npm run dev:complete-modules -- --email=<email>` | Só para teste manual: marca os módulos até `--until` (padrão `modulo-04`) como concluídos para a conta, via Admin SDK |
+### Comandos
 
-## Variáveis de ambiente
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | servidor de desenvolvimento |
+| `npm run build` | verificação de tipos e build de produção |
+| `npm run type-check` | só a verificação de tipos |
+| `npm run lint` | lint, sem nenhum aviso tolerado |
+| `npm run test:run` | todos os testes uma vez |
+| `npm run test:coverage` | testes com a cobertura mínima exigida no CI |
+| `npm run test:rules` | testes das Firestore Rules contra o emulador (precisa de Java) |
+| `npm run audit:check` | auditoria de dependências; falha em vulnerabilidade alta ou crítica fora dos riscos aceitos |
+| `npm run analyze` | build com o mapa do tamanho de cada pedaço do código |
+| `npm run seed` | publica o conteúdo de `src/content/` no Firestore (precisa da credencial de administrador) |
+| `npm run export:results` | exporta os dados da pesquisa para CSV, só lendo o banco (precisa da credencial e da chave da exportação) |
+| `npm run mobile:seed`, `npm run mobile:measure` | medição manual de largura em 390 px (`scripts/medicao-mobile/README.md`) |
+| `npm run dev:complete-modules` | só para teste manual: marca módulos como concluídos numa conta |
 
-Veja o arquivo `.env.example` para as variáveis necessárias.
+### Credencial de administrador
 
-O projeto usa um único Firebase para desenvolvimento e produção; os riscos disso e a política das chaves `VITE_` estão em `docs/seguranca.md`, seção 9.
+O seed, a exportação e o `dev:complete-modules` usam o Firebase Admin SDK, que ignora as regras de
+segurança. Por isso precisam de uma credencial de administrador, que nunca entra no repositório:
 
-Os dados gravados para o capítulo de Resultados do TCC, e as regras de consentimento, estão em `docs/modelagem.md`.
+1. No console do Firebase, abra o projeto e vá em **Configurações do projeto > Contas de serviço**.
+2. Clique em **Gerar nova chave privada**.
+3. Salve o arquivo em `~/.config/luminsight/service-account.json`, fora do repositório, ou aponte
+   outro caminho com `FIREBASE_SERVICE_ACCOUNT_PATH`.
 
-## Seed do Firestore
+A exportação precisa também de uma chave para o identificador anônimo, gerada uma vez com
+`openssl rand -hex 32 > ~/.config/luminsight/export-key` (`docs/modelagem.md`, seção 4.2).
 
-Os módulos e lições ficam no Firestore (não no bundle) para poderem ser atualizados sem um novo deploy. `npm run seed` popula essas coleções a partir do conteúdo em `src/content/`, usando o **Firebase Admin SDK** (que ignora as `firestore.rules` publicadas), então precisa de uma credencial de administrador do projeto, não das chaves do `.env`.
+## Como contribuir
 
-**Como gerar a credencial:**
+1. Crie uma branch a partir da `develop` (`feature/...`, `fix/...`, `chore/...`, `docs/...`).
+2. Faça commits de uma linha no padrão Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`).
+3. Abra um pull request para a `develop`. O CI roda tipos, lint, auditoria de dependências, testes
+   com cobertura mínima, testes das regras e build; se tudo passar, publica uma prévia no canal
+   `staging` do Firebase Hosting.
+4. As branches `main` e `develop` só aceitam merge por pull request, com o CI verde e a branch
+   atualizada com a base.
+5. A `main` publica em produção pelo `deploy.yml`, depois de aprovação manual.
 
-1. No [Console do Firebase](https://console.firebase.google.com/), abra o projeto do LumInsight.
-2. Vá em **Configurações do projeto → Contas de serviço**.
-3. Clique em **Gerar nova chave privada**. Isso baixa um `.json` com a credencial de admin.
+## Estrutura de pastas
 
-Se preferir salvar em outro caminho, aponte para ele com a variável de ambiente `FIREBASE_SERVICE_ACCOUNT_PATH`:
-
-```bash
-FIREBASE_SERVICE_ACCOUNT_PATH=/caminho/para/credencial.json npm run seed
+```
+src/
+  pages/        uma pasta por tela
+  features/     funcionalidades: autenticação, trilha, quiz, simulações, pesquisa, preferências
+  components/   componentes de interface reaproveitados
+  services/     única camada que fala com o Firestore e com o Auth
+  content/      conteúdo da trilha em código
+  lib/          configuração do Firebase e do roteador
+  utils/security/  validações de segurança
+scripts/        seed, exportação, auditoria de dependências e medição em 390 px
+tests/rules/    testes das Firestore Rules
+docs/           documentação do projeto
 ```
 
-As simulações que estão no Firestore e não existem mais em `src/content/simulations/` são apagadas no fim do seed, para uma simulação renomeada não aparecer duplicada.
+## Documentação
 
-O script se recusa a popular um módulo cujo conteúdo em `src/content/` ainda esteja com os placeholders vazios (`title: ''`), para não publicar algo incompleto na trilha por engano.
-
-**Importante:** o conteúdo do quiz (perguntas, alternativas e gabarito) **não** faz parte do seed, ele nunca vai para o Firestore. Fica em `src/content/quizzes/`, direto no bundle do app. Isso evita que qualquer usuário autenticado consulte a coleção pelo console do navegador e veja as respostas corretas antes de responder. É uma mitigação parcial, não uma proteção completa: quem inspecionar o bundle JS ainda consegue ler as perguntas e o gabarito, só não existe um endpoint estruturado servindo isso.
+- `docs/arquitetura.md`: visão geral, stack, camadas e fluxo de dados.
+- `docs/seguranca.md`: modelo de ameaça, regras, cabeçalhos, dependências, deploy e dados da
+  pesquisa.
+- `docs/modelagem.md`: dados gravados, regras explicadas uma a uma e exportação.
+- `docs/usabilidade.md`: o que os testes com usuários encontraram e o que mudou.
+- `docs/fases/`: o que foi feito em cada fase do projeto.
 
 ## Autores
 

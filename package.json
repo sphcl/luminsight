@@ -19,7 +19,10 @@
     "test:coverage": "vitest run --coverage",
     "audit:check": "tsx --tsconfig tsconfig.scripts.json scripts/audit-check.ts",
     "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed-modules.ts",
-    "dev:complete-modules": "tsx --tsconfig tsconfig.scripts.json scripts/dev-complete-modules.ts"
+    "dev:complete-modules": "tsx --tsconfig tsconfig.scripts.json scripts/dev-complete-modules.ts",
+    "mobile:seed": "tsx --tsconfig tsconfig.scripts.json scripts/medicao-mobile/seed-emulator.ts",
+    "mobile:measure": "tsx --tsconfig tsconfig.scripts.json scripts/medicao-mobile/measure.ts",
+    "export:results": "tsx --tsconfig tsconfig.scripts.json scripts/export-results.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -51,6 +54,7 @@
     "firebase-admin": "^14.4.0",
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.64.0",
     "postcss": "^8.5.23",
     "prettier": "^3.9.6",
     "rollup-plugin-visualizer": "^7.1.1",

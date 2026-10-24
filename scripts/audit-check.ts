@@ -12,13 +12,8 @@ interface AuditReport {
   vulnerabilities: Record<string, { via: (string | Advisory)[] }>
 }
 
-// Cada exceção precisa de motivo e de revisão a cada atualização de dependência.
-const ACCEPTED_ADVISORIES = new Map<string, string>([
-  [
-    'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm',
-    'braces <=3.0.3 sem versão corrigida, só entra pelo Tailwind 3 no build com globs fixos',
-  ],
-])
+// Vazia de propósito: exceção que não suprime nada esconderia o aviso se ele voltasse (docs/seguranca.md, 6.1).
+const ACCEPTED_ADVISORIES = new Map<string, string>()
 
 const BLOCKING_SEVERITIES = new Set(['high', 'critical'])
 
