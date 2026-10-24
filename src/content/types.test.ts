@@ -8,6 +8,16 @@ function lessonWithWords(count: number): LessonEntry {
   return { id: 'licao-01', data: buildLessonData('Lição', 1, [{ type: 'text', content }]) }
 }
 
+describe('buildLessonData', () => {
+  it.each([
+    [60, 20],
+    [400, 60],
+    [2000, 120],
+  ])('lição de %i palavras trava o botão por %i s', (words, seconds) => {
+    expect(lessonWithWords(words).data.readingTimeSeconds).toBe(seconds)
+  })
+})
+
 describe('countWords', () => {
   it('não conta os asteriscos do negrito como palavra', () => {
     expect(countWords([{ type: 'text', content: 'um **dois** três' }])).toBe(3)

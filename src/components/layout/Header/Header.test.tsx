@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { Header } from './Header'
@@ -119,6 +119,33 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/login')
     expect(screen.queryByRole('link', { name: 'Painel' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
+  })
+
+  it('sem sidebar o tamanho do texto vira um botão Aa com rótulo, que abre os três tamanhos', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    )
+
+    const button = screen.getByRole('button', { name: 'Tamanho do texto' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    const panel = document.getElementById(button.getAttribute('aria-controls') ?? '')
+    expect(within(panel as HTMLElement).getAllByRole('button')).toHaveLength(3)
+
+    await user.keyboard('{Escape}')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveFocus()
+  })
+
+  it('com sidebar não tem Aa, porque o tamanho do texto fica no menu lateral', () => {
+    renderHeader()
+
+    expect(screen.queryByRole('button', { name: 'Tamanho do texto' })).not.toBeInTheDocument()
   })
 
   it('o botão de menu só aparece onde existe sidebar', () => {

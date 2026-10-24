@@ -16,7 +16,7 @@ export const PLACEHOLDER_ICON = 'placeholder'
 export const PLACEHOLDER_COLOR = 'primary'
 
 const WORDS_PER_MINUTE = 200
-const MIN_LOCK_SECONDS = 30
+const MIN_LOCK_SECONDS = 20
 const MAX_LOCK_SECONDS = 120
 
 function blockText(block: ContentBlock): string[] {

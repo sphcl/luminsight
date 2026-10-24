@@ -114,6 +114,17 @@ describe('Perfil', () => {
     expect(within(rows[1] as HTMLElement).getByText('3')).toBeInTheDocument()
   })
 
+  it('a tabela rola dentro de uma região com rótulo que o teclado alcança', async () => {
+    vi.mocked(getUserProgress).mockResolvedValue({
+      'modulo-01': buildProgress({ quizBestScore: 80, quizAttempts: 3 }),
+    })
+    render(<Perfil />)
+
+    const region = await screen.findByRole('region', { name: 'Tabela do histórico de quizzes' })
+    expect(region).toContainElement(screen.getByRole('table'))
+    expect(region).toHaveAttribute('tabindex', '0')
+  })
+
   it('avisa quando ainda não fez nenhum quiz', async () => {
     render(<Perfil />)
 

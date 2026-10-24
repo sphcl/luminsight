@@ -10,7 +10,10 @@ import { ModuleCompleteNotice } from '@/features/modules/components/ModuleComple
 import { isModuleComplete } from '@/features/modules/engine/trail'
 import { formatMinutes } from '@/features/modules/labels'
 import { SimulationEngine } from '@/features/simulations/components/SimulationEngine'
-import { SimulationIndicator } from '@/features/simulations/components/SimulationIndicator'
+import {
+  SimulationIndicator,
+  SimulationIndicatorProvider,
+} from '@/features/simulations/components/SimulationIndicator'
 import {
   SimulationResult,
   type SaveStatus,
@@ -145,40 +148,42 @@ function SimulationSession({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 pb-16">
-      <Link to={ROUTES.SIMULACOES} className={cn(textLinkClass, 'self-start')}>
-        Voltar às simulações
-      </Link>
+    <SimulationIndicatorProvider>
+      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+        <Link to={ROUTES.SIMULACOES} className={cn(textLinkClass, 'self-start')}>
+          Voltar às simulações
+        </Link>
 
-      {phase === 'intro' && (
-        <SimulationIntro
-          simulation={simulation}
-          module={module}
-          onStart={() => setPhase('running')}
-        />
-      )}
+        {phase === 'intro' && (
+          <SimulationIntro
+            simulation={simulation}
+            module={module}
+            onStart={() => setPhase('running')}
+          />
+        )}
 
-      {/* Na conversa o histórico fica na tela no fim, e o resultado aparece embaixo dele. */}
-      {(phase === 'running' || (phase === 'result' && simulation.format !== 'email')) && (
-        <SimulationEngine key={attempt} simulation={simulation} onFinish={handleFinish} />
-      )}
+        {/* Na conversa o histórico fica na tela no fim, e o resultado aparece embaixo dele. */}
+        {(phase === 'running' || (phase === 'result' && simulation.format !== 'email')) && (
+          <SimulationEngine key={attempt} simulation={simulation} onFinish={handleFinish} />
+        )}
 
-      {phase === 'result' && justCompletedModule && (
-        <ModuleCompleteNotice moduleTitle={module.title} />
-      )}
+        {phase === 'result' && justCompletedModule && (
+          <ModuleCompleteNotice moduleTitle={module.title} />
+        )}
 
-      {phase === 'result' && summary && (
-        <SimulationResult
-          showIndicator={simulation.format === 'email'}
-          summary={summary}
-          scenes={simulation.scenes}
-          conclusion={simulation.conclusion}
-          saveStatus={saveStatus}
-          backTo={ROUTES.SIMULACOES}
-          onRetry={handleRetry}
-        />
-      )}
-    </div>
+        {phase === 'result' && summary && (
+          <SimulationResult
+            showIndicator={simulation.format === 'email'}
+            summary={summary}
+            scenes={simulation.scenes}
+            conclusion={simulation.conclusion}
+            saveStatus={saveStatus}
+            backTo={ROUTES.SIMULACOES}
+            onRetry={handleRetry}
+          />
+        )}
+      </div>
+    </SimulationIndicatorProvider>
   )
 }
 

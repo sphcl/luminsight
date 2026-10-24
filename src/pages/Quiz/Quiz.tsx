@@ -171,7 +171,13 @@ function QuizSession({ uid, module, questions, progress }: QuizSessionProps) {
       )}
 
       {phase === 'running' && (
-        <QuizEngine key={attempt} questions={questions} onFinish={handleFinish} />
+        // No quiz final a pessoa sabe que pode marcar mais de uma, mas não quantas: é o fechamento da trilha.
+        <QuizEngine
+          key={attempt}
+          questions={questions}
+          onFinish={handleFinish}
+          hideSelectionCount={isFinalQuiz(module.id)}
+        />
       )}
 
       {phase === 'result' && justCompletedModule && (
@@ -210,9 +216,7 @@ function QuizIntro({ module, totalQuestions, progress, onStart }: QuizIntroProps
       </h1>
       {isFinal && (
         <p className="rounded-card bg-accent-soft p-4 text-ink">
-          Este é o quiz final e revisa a trilha inteira, não só este módulo. Além do que você viu
-          aqui, ele cobra conteúdo dos módulos 2 e 3: vishing, clone phishing, deepfake e o uso de
-          IA em engenharia social.
+          Este é o quiz final e revisa a trilha inteira, não só este módulo.
         </p>
       )}
       <ul className="flex flex-col gap-1 text-sm text-ink-soft">

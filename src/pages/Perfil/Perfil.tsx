@@ -41,14 +41,14 @@ export function Perfil() {
             <img
               src={photoURL}
               alt={displayName}
-              className="h-16 w-16 rounded-full object-cover"
+              className="aspect-square w-16 shrink-0 rounded-full object-cover"
               // Mesmo motivo do Header: não vazar a URL da página pro CDN do avatar.
               referrerPolicy="no-referrer"
             />
           ) : (
             <span
               aria-hidden="true"
-              className="flex h-16 w-16 items-center justify-center rounded-full border border-rule font-serif text-3xl text-ink"
+              className="flex aspect-square w-16 shrink-0 items-center justify-center rounded-full border border-rule font-serif text-3xl text-ink"
             >
               {initial}
             </span>
@@ -185,26 +185,34 @@ function QuizHistorySection() {
           <p className="text-sm text-ink-soft">Você ainda não fez nenhum quiz.</p>
         </Card>
       ) : (
-        <table className="w-full overflow-hidden rounded-card border border-rule bg-surface text-left text-sm">
-          <thead className="bg-surface-muted text-ink-soft">
-            <tr>
-              <th scope="col" className="px-4 py-2 font-medium">
-                Módulo
-              </th>
-              <th scope="col" className="px-4 py-2 font-medium">
-                Melhor nota
-              </th>
-              <th scope="col" className="px-4 py-2 font-medium">
-                Tentativas
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-rule">
-            {data.map((entry) => (
-              <QuizHistoryRow key={entry.moduleId} entry={entry} />
-            ))}
-          </tbody>
-        </table>
+        // Na fonte máxima a tabela passa de 390px; focável pra quem não usa mouse conseguir rolar pelas setas.
+        <div
+          role="region"
+          aria-label="Tabela do histórico de quizzes"
+          tabIndex={0}
+          className="overflow-x-auto rounded-card border border-rule focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <table className="w-full bg-surface text-left text-sm">
+            <thead className="bg-surface-muted text-ink-soft">
+              <tr>
+                <th scope="col" className="px-4 py-2 font-medium">
+                  Módulo
+                </th>
+                <th scope="col" className="px-4 py-2 font-medium">
+                  Melhor nota
+                </th>
+                <th scope="col" className="px-4 py-2 font-medium">
+                  Tentativas
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-rule">
+              {data.map((entry) => (
+                <QuizHistoryRow key={entry.moduleId} entry={entry} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

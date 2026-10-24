@@ -11,9 +11,10 @@ import { QuizProgress } from './QuizProgress'
 interface QuizEngineProps {
   questions: QuizQuestion[]
   onFinish: (summary: QuizSummary) => void
+  hideSelectionCount?: boolean
 }
 
-export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
+export function QuizEngine({ questions, onFinish, hideSelectionCount }: QuizEngineProps) {
   const quiz = useQuiz(questions, { onFinish })
   const legendRef = useRef<HTMLLegendElement>(null)
   const { currentQuestion } = quiz
@@ -44,6 +45,7 @@ export function QuizEngine({ questions, onFinish }: QuizEngineProps) {
         isLocked={quiz.hasAnswered}
         revealedCorrectOptionIds={quiz.hasAnswered ? correctIds : null}
         onSelect={quiz.selectOption}
+        hideSelectionCount={hideSelectionCount}
       />
 
       {quiz.hasAnswered && quiz.isCorrect !== null && (
