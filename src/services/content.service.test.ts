@@ -90,14 +90,16 @@ describe('leitura de conteúdo do Firestore', () => {
   it('usa o id do documento e descarta simulação malformada', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce(
       docs([
-        ['simulacao-01', { ...validSimulation, id: 'id-forjado' }],
-        ['simulacao-02', { ...validSimulation, format: 'sms' }],
+        ['simulacao-modulo-02', { ...validSimulation, id: 'id-forjado' }],
+        ['simulacao-modulo-03', { ...validSimulation, format: 'sms' }],
       ])
     )
 
-    expect((await getSimulations()).map((simulation) => simulation.id)).toEqual(['simulacao-01'])
+    expect((await getSimulations()).map((simulation) => simulation.id)).toEqual([
+      'simulacao-modulo-02',
+    ])
 
-    vi.mocked(getDoc).mockResolvedValueOnce(single('simulacao-01', undefined))
-    expect(await getSimulationById('simulacao-01')).toBeNull()
+    vi.mocked(getDoc).mockResolvedValueOnce(single('simulacao-modulo-02', undefined))
+    expect(await getSimulationById('simulacao-modulo-02')).toBeNull()
   })
 })

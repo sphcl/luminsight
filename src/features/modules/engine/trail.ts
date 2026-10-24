@@ -97,3 +97,61 @@ export function calculateTrailProgress(modules: ModuleWithId[], progressMap: Pro
 
   return totals.total === 0 ? 0 : Math.round((totals.completed / totals.total) * 100)
 }
+
+export type QuizRequirement = 'done' | 'pending' | 'failed'
+
+export interface ModuleMissingSteps {
+  module: ModuleWithId
+  lessonsLeft: number
+  quiz: QuizRequirement
+  simulationPending: boolean
+}
+
+export type UnlockRequirement =
+  { kind: 'steps'; next: ModuleMissingSteps; thenModules: ModuleWithId[] } | { kind: 'unavailable' }
+
+export function getMissingSteps(
+  module: ModuleWithId,
+  progress: ProgressDocument | undefined
+): ModuleMissingSteps {
+  const lessonsDone = progress?.lessonsCompleted.length ?? 0
+  const bestScore = progress?.quizBestScore ?? null
+  const quiz: QuizRequirement =
+    bestScore !== null && bestScore >= QUIZ_PASSING_SCORE
+      ? 'done'
+      : (progress?.quizAttempts ?? 0) > 0
+        ? 'failed'
+        : 'pending'
+
+  return {
+    module,
+    lessonsLeft: Math.max(module.totalLessons - lessonsDone, 0),
+    quiz,
+    simulationPending: module.hasSimulation && !(progress?.simulationCompleted ?? false),
+  }
+}
+
+// Volto pela cadeia de pré-requisitos até achar um concluído; o mais antigo pendente é o único que dá pra fazer agora.
+export function getUnlockRequirement(
+  targetModule: ModuleWithId,
+  progressMap: ProgressMap,
+  allModules: ModuleWithId[]
+): UnlockRequirement | null {
+  const pending: ModuleWithId[] = []
+  let current = targetModule
+
+  while (current.requiredModuleId) {
+    const requiredId = current.requiredModuleId
+    const required = allModules.find((module) => module.id === requiredId)
+    if (!required || pending.includes(required)) return { kind: 'unavailable' }
+    if (getModuleStatus(required, progressMap, allModules) === 'completed') break
+
+    pending.unshift(required)
+    current = required
+  }
+
+  const [next, ...thenModules] = pending
+  if (!next) return null
+
+  return { kind: 'steps', next: getMissingSteps(next, progressMap[next.id]), thenModules }
+}

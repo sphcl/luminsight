@@ -12,9 +12,9 @@ import { quiz02Questions } from './quizzes/quiz-02'
 import { quiz03Questions } from './quizzes/quiz-03'
 import { quiz04Questions } from './quizzes/quiz-04'
 import { quiz05Questions } from './quizzes/quiz-05'
-import { simulation01 } from './simulations/simulation-01'
-import { simulation02 } from './simulations/simulation-02'
-import { simulation03 } from './simulations/simulation-03'
+import { simulationModulo02 } from './simulations/simulation-02'
+import { simulationModulo03 } from './simulations/simulation-03'
+import { simulationModulo04 } from './simulations/simulation-04'
 
 export interface ContentModuleEntry {
   id: string
@@ -23,7 +23,11 @@ export interface ContentModuleEntry {
   quiz: QuizQuestion[]
 }
 
-export const CONTENT_SIMULATIONS: SimulationDocument[] = [simulation01, simulation02, simulation03]
+export const CONTENT_SIMULATIONS: SimulationDocument[] = [
+  simulationModulo02,
+  simulationModulo03,
+  simulationModulo04,
+]
 
 function buildEntry(
   id: string,

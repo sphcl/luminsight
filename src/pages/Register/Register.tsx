@@ -1,9 +1,12 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { textLinkClass } from '@/components/ui/linkStyles'
+import { ROUTES } from '@/constants/routes'
 import { RegisterForm } from '@/features/auth'
 import { useRedirectTarget } from '@/lib/router/useRedirectTarget'
 
 export function Register() {
   const navigate = useNavigate()
+  const { search } = useLocation()
   const redirectTarget = useRedirectTarget()
 
   return (
@@ -19,6 +22,13 @@ export function Register() {
           nasce false), então navegar para o redirectTarget aqui é seguro mesmo
           quando ele aponta pra uma rota protegida — o guard encadeia o redirecionamento. */}
       <RegisterForm onSuccess={() => navigate(redirectTarget, { replace: true })} />
+
+      <p className="text-center text-sm text-ink-soft">
+        Já tem conta?{' '}
+        <Link to={{ pathname: ROUTES.LOGIN, search }} className={textLinkClass}>
+          Entrar
+        </Link>
+      </p>
     </div>
   )
 }

@@ -66,7 +66,7 @@ function buildEntry(overrides: Partial<ContentModuleEntry> = {}): ContentModuleE
 
 function buildSimulation(overrides: Partial<SimulationDocument> = {}): SimulationDocument {
   return {
-    id: 'simulacao-01',
+    id: 'simulacao-modulo-01',
     moduleId: 'modulo-01',
     title: 'Simulação',
     description: 'Descrição',
@@ -286,6 +286,11 @@ describe('validateContent', () => {
       ],
     })
     expect(validateContent([], [simulation])).not.toEqual([])
+  })
+
+  it('acusa simulação cujo id não carrega o número do módulo', () => {
+    const simulation = buildSimulation({ id: 'simulacao-01', moduleId: 'modulo-02' })
+    expect(validateContent([], [simulation]).join()).toContain('simulacao-modulo-02')
   })
 
   it('acusa email de simulação fora de domínio reservado', () => {
