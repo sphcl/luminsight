@@ -63,6 +63,8 @@
 
   body {
     @apply bg-canvas font-sans text-ink;
+    /* Altura medida do aviso de simulação, definida pelo próprio aviso; fora da simulação fica 0. */
+    padding-bottom: var(--simulation-indicator-height, 0px);
   }
 
   /* Anel no acento com folga no fundo: passa 3:1 contra o fundo nos dois temas. */

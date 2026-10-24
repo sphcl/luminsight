@@ -140,6 +140,29 @@ describe('QuestionCard', () => {
     expect(screen.getByText('Múltipla resposta')).toBeInTheDocument()
   })
 
+  it('no quiz final pede todas as corretas sem dizer quantas', () => {
+    render(
+      <QuestionCard
+        question={{
+          id: 'q7',
+          type: 'multiple_answer',
+          prompt: 'Quais canais?',
+          options: fourOptions,
+          expectedSelections: 2,
+        }}
+        selectedOptionIds={[]}
+        isLocked={false}
+        revealedCorrectOptionIds={null}
+        onSelect={vi.fn()}
+        hideSelectionCount
+      />
+    )
+
+    expect(screen.getByRole('group', { name: 'Quais canais?' })).toHaveAccessibleDescription(
+      'Marque todas as alternativas corretas.'
+    )
+  })
+
   it('multiple_answer revelado marca todas as certas e a escolhida errada', () => {
     render(
       <QuestionCard

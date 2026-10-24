@@ -3,7 +3,11 @@ import { Button } from '@/components/ui'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthActions } from '@/features/auth/hooks/useAuthActions'
-import { FontSizeControl, ThemeToggle } from '@/features/preferences/PreferenceControls'
+import {
+  FontSizeControl,
+  FontSizeMenu,
+  ThemeToggle,
+} from '@/features/preferences/PreferenceControls'
 import { cn } from '@/utils/helpers/classnames'
 import { MenuIcon } from '../icons'
 
@@ -21,6 +25,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const { logout, isLoading: isLoggingOut } = useAuthActions()
   const { pathname } = useLocation()
   const isOnAuthPage = pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER
+
+  // No celular quem tem sidebar leva Home, Painel, fonte, tema e Sair pra lá; senão o header passa de 390px.
+  const hasSidebar = Boolean(onToggleSidebar)
+  const desktopOnly = hasSidebar ? 'hidden md:inline-flex' : ''
 
   const displayName = userDocument?.displayName ?? user?.displayName ?? 'Usuário'
   const initial = displayName.trim().charAt(0).toUpperCase() || '?'
@@ -50,22 +58,26 @@ export function Header({ onToggleSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1">
-        <Link to={ROUTES.HOME} className={navLinkClass}>
+        <Link to={ROUTES.HOME} className={cn(navLinkClass, 'hidden md:inline-flex')}>
           Home
         </Link>
         {isAuthenticated && (
-          <Link to={ROUTES.DASHBOARD} className={navLinkClass}>
+          <Link to={ROUTES.DASHBOARD} className={cn(navLinkClass, desktopOnly)}>
             Painel
           </Link>
         )}
-        <FontSizeControl />
-        <ThemeToggle />
+        {!hasSidebar && <FontSizeMenu className="md:hidden" />}
+        <FontSizeControl className="hidden md:flex" />
+        <ThemeToggle className={desktopOnly} />
         {isAuthenticated ? (
           <>
             <Link
               to={ROUTES.PERFIL}
               aria-label={`Perfil de ${displayName}`}
-              className="ml-2 flex min-h-11 items-center gap-2 rounded-full pr-1 transition-colors hover:bg-surface-muted motion-reduce:transition-none sm:pr-3"
+              className={cn(
+                'ml-2 min-h-11 items-center gap-2 rounded-full pr-1 transition-colors hover:bg-surface-muted motion-reduce:transition-none sm:pr-3',
+                hasSidebar ? 'flex' : 'hidden md:flex'
+              )}
             >
               {user?.photoURL ? (
                 <img
@@ -94,6 +106,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               size="sm"
               isLoading={isLoggingOut}
               onClick={() => void logout()}
+              className="hidden md:inline-flex"
             >
               Sair
             </Button>

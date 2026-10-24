@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from 'react'
 import { MoonIcon, SunIcon } from '@/components/layout/icons'
 import { cn } from '@/utils/helpers/classnames'
 import { FONT_SIZES, type FontSize } from './preferences'
@@ -62,6 +63,58 @@ export function FontSizeControl({ className }: { className?: string }) {
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// Versão compacta pro celular: um botão só que abre os três tamanhos, sem esconder o tema junto.
+export function FontSizeMenu({ className }: { className?: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const panelId = useId()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setIsOpen(false)
+      buttonRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  return (
+    <div ref={containerRef} className={cn('relative', className)}>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="Tamanho do texto"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        onClick={() => setIsOpen((open) => !open)}
+        className={cn(controlClass, 'font-serif', isOpen && 'text-accent')}
+      >
+        <span aria-hidden="true">Aa</span>
+      </button>
+      {isOpen && (
+        <div
+          id={panelId}
+          className="absolute right-0 top-full z-50 border border-rule bg-surface p-1 shadow-sm"
+        >
+          <FontSizeControl />
+        </div>
+      )}
     </div>
   )
 }

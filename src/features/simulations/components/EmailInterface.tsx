@@ -45,9 +45,10 @@ export function EmailInterface({ simulation, session }: EmailInterfaceProps) {
 
   return (
     <>
+      {/* Coluna com mínimo zero: sem isso o truncate da prévia estica o grid até caber o texto numa linha só. */}
       <section
         aria-label="Caixa de entrada simulada"
-        className="grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:grid-cols-[16rem_1fr]"
+        className="grid grid-cols-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:grid-cols-[16rem_minmax(0,1fr)]"
       >
         <div className="border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-r">
           <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">

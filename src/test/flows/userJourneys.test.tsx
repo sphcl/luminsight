@@ -245,7 +245,9 @@ describe('jornadas do usuário', { timeout: 20_000 }, () => {
     const card = await screen.findByTestId('module-card-modulo-01', {}, FLOW_TIMEOUT)
     expect(within(card).getByText('Em andamento')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Sair' }))
+    // O Sair do menu lateral também está no DOM; o jsdom não aplica o md:hidden que esconde um dos dois.
+    const [siteHeader] = screen.getAllByRole('banner')
+    await user.click(within(siteHeader as HTMLElement).getByRole('button', { name: 'Sair' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
     expect(router.state.location.search).toBe('?redirect=%2Ftrilha')
 

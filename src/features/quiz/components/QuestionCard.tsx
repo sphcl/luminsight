@@ -11,6 +11,7 @@ interface QuestionCardProps {
   // Só chega preenchido depois da resposta confirmada; antes disso o card não sabe qual é a certa.
   revealedCorrectOptionIds: string[] | null
   onSelect: (optionId: string) => void
+  hideSelectionCount?: boolean
 }
 
 const TYPE_LABELS: Record<QuestionType, string> = {
@@ -44,7 +45,17 @@ const optionStateStyles = {
 }
 
 export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
-  ({ question, selectedOptionIds, isLocked, revealedCorrectOptionIds, onSelect }, legendRef) => {
+  (
+    {
+      question,
+      selectedOptionIds,
+      isLocked,
+      revealedCorrectOptionIds,
+      onSelect,
+      hideSelectionCount = false,
+    },
+    legendRef
+  ) => {
     const isMultiple = question.type === 'multiple_answer'
     const scenario = question.type === 'scenario' || isMultiple ? question.scenario : undefined
     const hintId = `question-${question.id}-hint`
@@ -91,8 +102,9 @@ export const QuestionCard = forwardRef<HTMLLegendElement, QuestionCardProps>(
           </legend>
           {isMultiple && (
             <p id={hintId} className="-mt-2 mb-3 text-[0.9em] font-medium text-accent">
-              Mais de uma alternativa está correta. Marque as {question.expectedSelections}{' '}
-              alternativas corretas.
+              {hideSelectionCount
+                ? 'Marque todas as alternativas corretas.'
+                : `Mais de uma alternativa está correta. Marque as ${question.expectedSelections} alternativas corretas.`}
             </p>
           )}
           <div
