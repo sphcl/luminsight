@@ -1,0 +1,52 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  preview:
+    name: Preview no canal staging
+    needs: ci
+    # PR de fork não recebe secrets, então nem tento.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    # Canal é um só, então dois PRs ao mesmo tempo esperam a vez em vez de um sobrescrever o outro no meio.
+    concurrency:
+      group: preview-staging
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v7
+
+      - name: Baixar o build testado
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      # Canal fixo pra URL não mudar e o domínio ficar autorizado uma vez só no Firebase Auth.
+      - name: Publicar no canal staging
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PREVIEW }}
+          projectId: luminsight-8a8dc
+          channelId: staging
+          # Só o site do app: o do endereço antigo só redireciona e não precisa de preview.
+          target: luminsight-tcc
+          expires: 7d
+          firebaseToolsVersion: 15.33.0

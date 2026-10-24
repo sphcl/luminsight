@@ -1,5 +1,0 @@
-export const GAMIFICATION_CONFIG = {
-  MIN_QUIZ_PASS_SCORE: 70,
-  MIN_LESSON_READ_SECONDS: 30,
-  STREAK_TIMEZONE: 'America/Sao_Paulo',
-} as const

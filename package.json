@@ -6,30 +6,37 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "analyze": "ANALYZE=true vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -b",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:rules": "npx --yes firebase-tools@15.33.0 emulators:exec --only firestore --project demo-luminsight 'vitest run --config vitest.rules.config.ts'",
     "test:coverage": "vitest run --coverage",
-    "audit:check": "npm audit --audit-level=high"
+    "audit:check": "tsx --tsconfig tsconfig.scripts.json scripts/audit-check.ts",
+    "seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed-modules.ts",
+    "dev:complete-modules": "tsx --tsconfig tsconfig.scripts.json scripts/dev-complete-modules.ts",
+    "mobile:seed": "tsx --tsconfig tsconfig.scripts.json scripts/medicao-mobile/seed-emulator.ts",
+    "mobile:measure": "tsx --tsconfig tsconfig.scripts.json scripts/medicao-mobile/measure.ts",
+    "export:results": "tsx --tsconfig tsconfig.scripts.json scripts/export-results.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "firebase": "^12.16.0",
-    "framer-motion": "^12.42.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3",
+    "zod": "^4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -44,14 +51,21 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "eslint-plugin-security": "^4.0.1",
+    "firebase-admin": "^14.4.0",
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.64.0",
     "postcss": "^8.5.23",
     "prettier": "^3.9.6",
+    "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.62.0",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

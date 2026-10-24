@@ -1,0 +1,275 @@
+import { useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
+import { Button, Card, Skeleton } from '@/components/ui'
+import { QUIZ_PASSING_SCORE } from '@/constants/quiz'
+import { textLinkClass } from '@/components/ui/linkStyles'
+import { cn } from '@/utils/helpers/classnames'
+import { ROUTES, buildModuleRoute } from '@/constants/routes'
+import { getQuizForModule, isFinalQuiz } from '@/content/quizzes'
+import { useAuth } from '@/hooks/useAuth'
+import { ContentUnavailable } from '@/features/modules/components/ContentUnavailable'
+import { ModuleCompleteNotice } from '@/features/modules/components/ModuleCompleteNotice'
+import { TrailClosing } from '@/features/research/components/TrailClosing'
+import { isModuleComplete } from '@/features/modules/engine/trail'
+import { useModuleAccess } from '@/features/modules/hooks/useModuleAccess'
+import { QuizEngine } from '@/features/quiz/components/QuizEngine'
+import { ResultScreen, type SaveStatus } from '@/features/quiz/components/ResultScreen'
+import type { QuizSummary } from '@/features/quiz/engine/scoring'
+import { markModuleCompleted, saveQuizAttempt } from '@/services/progress.service'
+import { saveQuizResult } from '@/services/quiz.service'
+import { mapFirestoreError } from '@/utils/security/errors'
+import type { ModuleWithId } from '@/types/module.types'
+import type { ProgressDocument } from '@/types/progress.types'
+import type { QuizQuestion } from '@/types/quiz.types'
+import { useDocumentTitle } from '@/lib/router/useDocumentTitle'
+import { parseRouteId } from '@/utils/security/route-params'
+
+export function Quiz() {
+  const moduleId = parseRouteId(useParams<{ moduleId: string }>().moduleId)
+  const { user, userDocument } = useAuth()
+  const { state } = useModuleAccess(moduleId)
+
+  switch (state.status) {
+    case 'loading':
+      return <QuizSkeleton />
+
+    case 'error':
+      return (
+        <ContentUnavailable
+          title="Não foi possível carregar o quiz"
+          description={state.message}
+          backTo={ROUTES.TRILHA}
+          backLabel="Voltar para a trilha"
+        />
+      )
+
+    case 'not_found':
+      return (
+        <ContentUnavailable
+          title="Módulo não encontrado"
+          description="Esse módulo não existe ou não está disponível."
+          backTo={ROUTES.TRILHA}
+          backLabel="Voltar para a trilha"
+        />
+      )
+
+    case 'locked':
+      return <Navigate to={ROUTES.TRILHA} replace />
+
+    case 'ready': {
+      const completed = new Set(state.completedLessonIds)
+      const allLessonsDone =
+        state.lessons.length > 0 && state.lessons.every((lesson) => completed.has(lesson.id))
+
+      // Confiro aqui de novo porque a URL do quiz pode ser digitada sem passar pela página do módulo.
+      if (!allLessonsDone) {
+        return <Navigate to={buildModuleRoute(state.module.id)} replace />
+      }
+
+      const questions = getQuizForModule(state.module.id)
+      if (!questions) {
+        return (
+          <ContentUnavailable
+            title="Quiz indisponível"
+            description="Este módulo ainda não tem um quiz definido."
+            backTo={buildModuleRoute(state.module.id)}
+            backLabel="Voltar para o módulo"
+          />
+        )
+      }
+
+      if (!user) return <QuizSkeleton />
+
+      return (
+        <QuizSession
+          key={state.module.id}
+          uid={user.uid}
+          module={state.module}
+          questions={questions}
+          progress={state.progress}
+          participatesInResearch={userDocument?.researchConsent?.accepted === true}
+        />
+      )
+    }
+  }
+}
+
+interface QuizSessionProps {
+  uid: string
+  module: ModuleWithId
+  questions: QuizQuestion[]
+  progress: ProgressDocument | undefined
+  participatesInResearch: boolean
+}
+
+type Phase = 'intro' | 'running' | 'result'
+
+function QuizSession({
+  uid,
+  module,
+  questions,
+  progress,
+  participatesInResearch,
+}: QuizSessionProps) {
+  useDocumentTitle(`Quiz: ${module.title}`)
+  const [phase, setPhase] = useState<Phase>('intro')
+  const [attempt, setAttempt] = useState(0)
+  const [summary, setSummary] = useState<QuizSummary | null>(null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saving')
+  const [currentProgress, setCurrentProgress] = useState(progress)
+  const [isModuleMarked, setIsModuleMarked] = useState((progress?.completedAt ?? null) !== null)
+  const [justCompletedModule, setJustCompletedModule] = useState(false)
+  const [skippedClosing, setSkippedClosing] = useState(false)
+  // Encerramento só na hora em que a trilha fecha, e só pra quem participa da pesquisa.
+  const showClosing =
+    justCompletedModule && isFinalQuiz(module.id) && participatesInResearch && !skippedClosing
+
+  async function persistResult(result: QuizSummary) {
+    setSaveStatus('saving')
+    try {
+      await saveQuizResult({ userId: uid, moduleId: module.id, ...result })
+      await saveQuizAttempt(uid, module.id, result.score)
+
+      if (currentProgress) {
+        const previousBest = currentProgress.quizBestScore
+        const nextProgress: ProgressDocument = {
+          ...currentProgress,
+          quizBestScore:
+            previousBest === null ? result.score : Math.max(previousBest, result.score),
+          quizAttempts: currentProgress.quizAttempts + 1,
+        }
+
+        // Só marco uma vez: refazer o quiz depois de concluído não pode sobrescrever o completedAt original.
+        if (!isModuleMarked && isModuleComplete(module, nextProgress)) {
+          await markModuleCompleted(uid, module.id)
+          setIsModuleMarked(true)
+          setJustCompletedModule(true)
+        }
+        setCurrentProgress(nextProgress)
+      }
+
+      setSaveStatus('saved')
+    } catch (caughtError) {
+      mapFirestoreError(caughtError)
+      setSaveStatus('error')
+    }
+  }
+
+  function handleFinish(result: QuizSummary) {
+    setSummary(result)
+    setPhase('result')
+    void persistResult(result)
+  }
+
+  function handleRetry() {
+    setSummary(null)
+    setJustCompletedModule(false)
+    setAttempt((current) => current + 1)
+    setPhase('running')
+  }
+
+  return (
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <Link to={buildModuleRoute(module.id)} className={cn(textLinkClass, 'self-start')}>
+        {module.title}
+      </Link>
+
+      {phase === 'intro' && (
+        <QuizIntro
+          module={module}
+          totalQuestions={questions.length}
+          progress={currentProgress}
+          onStart={() => setPhase('running')}
+        />
+      )}
+
+      {phase === 'running' && (
+        // No quiz final a pessoa sabe que pode marcar mais de uma, mas não quantas: é o fechamento da trilha.
+        <QuizEngine
+          key={attempt}
+          questions={questions}
+          onFinish={handleFinish}
+          hideSelectionCount={isFinalQuiz(module.id)}
+        />
+      )}
+
+      {phase === 'result' && justCompletedModule && (
+        <ModuleCompleteNotice moduleTitle={module.title} />
+      )}
+
+      {phase === 'result' && showClosing && (
+        <TrailClosing uid={uid} onSkip={() => setSkippedClosing(true)} />
+      )}
+
+      {phase === 'result' && summary && (
+        <ResultScreen
+          summary={summary}
+          questions={questions}
+          saveStatus={saveStatus}
+          backTo={buildModuleRoute(module.id)}
+          onRetry={handleRetry}
+        />
+      )}
+    </div>
+  )
+}
+
+interface QuizIntroProps {
+  module: ModuleWithId
+  totalQuestions: number
+  progress: ProgressDocument | undefined
+  onStart: () => void
+}
+
+function QuizIntro({ module, totalQuestions, progress, onStart }: QuizIntroProps) {
+  const bestScore = progress?.quizBestScore ?? null
+  const attempts = progress?.quizAttempts ?? 0
+  const isFinal = isFinalQuiz(module.id)
+
+  return (
+    <Card className="flex flex-col gap-4">
+      <h1 className="page-title">
+        {isFinal ? 'Quiz final' : 'Quiz'}: {module.title}
+      </h1>
+      {isFinal && (
+        <p className="rounded-card bg-accent-soft p-4 text-ink">
+          Este é o quiz final e revisa a trilha inteira, não só este módulo.
+        </p>
+      )}
+      <ul className="flex flex-col gap-1 text-sm text-ink-soft">
+        <li>{totalQuestions} questões</li>
+        <li>Nota mínima para aprovação: {QUIZ_PASSING_SCORE}</li>
+        {bestScore !== null && (
+          <li>
+            Sua melhor nota até agora: {bestScore} ({attempts}{' '}
+            {attempts === 1 ? 'tentativa' : 'tentativas'})
+          </li>
+        )}
+      </ul>
+      <p className="rounded-card bg-warning-soft p-3 text-sm text-ink">
+        Depois de confirmar uma resposta, não dá para alterá-la. Você pode refazer o quiz quantas
+        vezes quiser.
+      </p>
+      <Button className="self-start" onClick={onStart}>
+        Começar quiz
+      </Button>
+    </Card>
+  )
+}
+
+function QuizSkeleton() {
+  return (
+    <div
+      className="mx-auto flex max-w-3xl flex-col gap-6"
+      aria-busy="true"
+      aria-label="Carregando quiz"
+    >
+      <Card className="flex flex-col gap-3">
+        <Skeleton className="h-8 w-2/3" />
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-52" />
+        <Skeleton className="h-11 w-36" />
+      </Card>
+    </div>
+  )
+}

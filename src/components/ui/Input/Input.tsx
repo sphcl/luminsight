@@ -15,13 +15,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const errorId = `${inputId}-error`
     const hintId = `${inputId}-hint`
 
-    const describedBy = [error && errorId, hint && !error && hintId]
-      .filter(Boolean)
-      .join(' ')
+    const describedBy = [error && errorId, hint && !error && hintId].filter(Boolean).join(' ')
 
     return (
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+        <label htmlFor={inputId} className="text-sm font-medium text-ink">
           {label}
         </label>
 
@@ -31,26 +29,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy || undefined}
           className={cn(
-            'h-11 rounded-lg border bg-white px-3.5 text-sm text-slate-900',
-            'placeholder:text-slate-400',
-            'transition-colors duration-150',
-            'disabled:bg-surface-muted disabled:cursor-not-allowed',
-            error
-              ? 'border-danger-500 focus-visible:ring-danger-500'
-              : 'border-surface-border',
+            // Contorno em border-control (3:1, WCAG 1.4.11): a régua decorativa some contra o fundo.
+            'h-11 rounded-none border bg-surface px-3.5 text-base text-ink',
+            'placeholder:text-ink-muted',
+            'transition-colors duration-150 motion-reduce:transition-none',
+            'disabled:cursor-not-allowed disabled:bg-surface-muted',
+            error ? 'border-danger focus-visible:ring-danger' : 'border-control',
             className
           )}
           {...props}
         />
 
         {error && (
-          <p id={errorId} role="alert" className="text-sm text-danger-600">
+          <p id={errorId} role="alert" className="text-sm text-danger">
             {error}
           </p>
         )}
 
         {hint && !error && (
-          <p id={hintId} className="text-sm text-slate-500">
+          <p id={hintId} className="text-sm text-ink-muted">
             {hint}
           </p>
         )}

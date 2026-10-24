@@ -1,0 +1,433 @@
+rules_version = '2';
+
+// Regra geral do projeto: nega tudo por padrão. Cada coleção só abre
+// exatamente o acesso que precisa, nada além disso.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // createdAt/lastLoginAt precisam ser o carimbo do servidor (serverTimestamp()),
+    // nunca uma data que o cliente inventou. O Firestore resolve o sentinel de
+    // serverTimestamp() como request.time no momento em que a regra é avaliada,
+    // então essa comparação barra quem tentar mandar new Date() na mão.
+    function isServerTimestamp(field) {
+      return field == request.time;
+    }
+
+    function moduleExists(moduleId) {
+      return exists(/databases/$(database)/documents/modules/$(moduleId));
+    }
+
+    function getModule(moduleId) {
+      return get(/databases/$(database)/documents/modules/$(moduleId)).data;
+    }
+
+    // Mesmo valor de QUIZ_PASSING_SCORE em src/constants/quiz.ts.
+    function passingScore() {
+      return 70;
+    }
+
+    // ---------------------------------------------------------------- users
+
+    // Documento novo só pode nascer com role 'user' e progresso zerado.
+    // Ninguém cria a própria conta já como admin ou com módulos "concluídos".
+    function isValidUserCreate() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'displayName', 'email', 'photoURL', 'createdAt', 'lastLoginAt',
+          'onboardingCompleted', 'completedModules', 'completedLessons',
+          'completedSimulations', 'totalQuizzesCompleted', 'role'
+        ])
+        && data.role == 'user'
+        // Nome do Google não passa pelo Zod do cadastro, então aqui só limito o tamanho.
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        // O email tem que ser o do token: ninguém cria documento com o email de outra pessoa.
+        && data.email == request.auth.token.get('email', '')
+        && (data.photoURL == null
+            || (data.photoURL is string
+                && data.photoURL.size() <= 2048
+                && data.photoURL.matches('^https://.*')))
+        && data.onboardingCompleted == false
+        && data.completedModules == []
+        && data.completedLessons == []
+        && data.completedSimulations == []
+        && data.totalQuizzesCompleted == 0
+        && isServerTimestamp(data.createdAt)
+        && isServerTimestamp(data.lastLoginAt);
+    }
+
+    function roleIsImmutable() {
+      return request.resource.data.role == resource.data.role;
+    }
+
+    function changedUserKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Mesmas regras do displayNameField em auth.schemas.ts: o Zod já entrega o nome sem espaço nas pontas.
+    function isValidDisplayName(name) {
+      return name is string
+        && name.size() >= 2
+        && name.size() <= 60
+        && name == name.trim()
+        && name.matches("^[\\p{L}\\s'-]+$");
+    }
+
+    // Mesmos valores do onboarding.schema.ts. Só valores do enum, nunca texto livre.
+    function isValidOnboardingProfile(profile) {
+      return profile is map
+        && profile.keys().hasOnly(['securityKnowledge', 'scamExperience', 'motivation'])
+        && profile.securityKnowledge in ['iniciante', 'intermediario', 'avancado']
+        && profile.scamExperience in ['sim', 'nao', 'prefiro_nao_responder']
+        && profile.motivation in [
+          'aprender_basico', 'proteger_familia', 'interesse_profissional', 'curiosidade'
+        ];
+    }
+
+    // O cliente só faz três tipos de update no documento do usuário, e cada um mexe
+    // exatamente nos seus campos. Qualquer combinação diferente cai fora.
+    function isLoginUpdate() {
+      return changedUserKeys().hasOnly(['lastLoginAt'])
+        && isServerTimestamp(request.resource.data.lastLoginAt);
+    }
+
+    // Chave de transição: em false, o onboarding antigo (sem consentimento) volta a passar. Fica true;
+    // só voltaria pra false se código sem o aviso de pesquisa precisasse rodar contra este banco.
+    function consentRequired() {
+      return true;
+    }
+
+    // Formato antigo primeiro: o write-allowlist.test lê a primeira lista desta função.
+    function isOnboardingCompletion() {
+      let data = request.resource.data;
+      return resource.data.onboardingCompleted == false
+        && data.onboardingCompleted == true
+        && isValidOnboardingProfile(data.onboardingProfile)
+        && ((changedUserKeys().hasOnly(['onboardingCompleted', 'onboardingProfile'])
+              && !consentRequired())
+            || isOnboardingWithConsent(data));
+    }
+
+    function isOnboardingWithConsent(data) {
+      return changedUserKeys().hasOnly([
+          'onboardingCompleted', 'onboardingProfile', 'researchConsent', 'riskBaseline'
+        ])
+        && isValidConsent(data.researchConsent, 'onboarding-v2')
+        && hasBaselineOnlyIfConsented(data, false);
+    }
+
+    function isDisplayNameUpdate() {
+      return changedUserKeys().hasOnly(['displayName'])
+        && isValidDisplayName(request.resource.data.displayName);
+    }
+
+    // ------------------------------------------------------------- pesquisa
+
+    // Mesmos valores de src/features/research/schemas/research.schema.ts.
+    function riskPerceptionValues() {
+      return ['muito_baixa', 'baixa', 'alta', 'muito_alta'];
+    }
+
+    // accepted só vale com a declaração de 18 anos; idade nunca é gravada, só a declaração.
+    function isValidConsent(consent, version) {
+      return consent is map
+        && consent.keys().hasOnly(['accepted', 'isAdult', 'decidedAt', 'version'])
+        && consent.keys().hasAll(['accepted', 'isAdult', 'decidedAt', 'version'])
+        && consent.accepted is bool
+        && consent.isAdult is bool
+        && (consent.accepted == false || consent.isAdult == true)
+        && isServerTimestamp(consent.decidedAt)
+        && consent.version == version;
+    }
+
+    // Percepção de risco é só da pesquisa: existe se e somente se a pessoa aceitou.
+    function hasBaselineOnlyIfConsented(data, collectedAfterUse) {
+      return data.researchConsent.accepted == ('riskBaseline' in data)
+        && (!('riskBaseline' in data)
+            || (data.riskBaseline is map
+                && data.riskBaseline.keys().hasOnly(['riskPerception', 'collectedAfterUse'])
+                && data.riskBaseline.keys().hasAll(['riskPerception', 'collectedAfterUse'])
+                && data.riskBaseline.riskPerception in riskPerceptionValues()
+                && data.riskBaseline.collectedAfterUse == collectedAfterUse));
+    }
+
+    // Quem já tinha conta antes do aviso decide uma vez só; o "antes" dessa pessoa
+    // fica marcado como coletado depois de usar o site.
+    function isLateConsent() {
+      let data = request.resource.data;
+      return resource.data.onboardingCompleted == true
+        && !('researchConsent' in resource.data)
+        && !('riskBaseline' in resource.data)
+        && changedUserKeys().hasOnly(['researchConsent', 'riskBaseline'])
+        && isValidConsent(data.researchConsent, 'retroativo-v2')
+        && hasBaselineOnlyIfConsented(data, true);
+    }
+
+    // Aceitar ou revogar depois, pelo Perfil. Não mexe no riskBaseline já gravado.
+    function isConsentChange() {
+      return 'researchConsent' in resource.data
+        && changedUserKeys().hasOnly(['researchConsent'])
+        && isValidConsent(request.resource.data.researchConsent, 'retroativo-v2');
+    }
+
+    function isFeedbackDismissal() {
+      return changedUserKeys().hasOnly(['trailFeedbackDismissedAt'])
+        && isServerTimestamp(request.resource.data.trailFeedbackDismissedAt);
+    }
+
+    // Nega por padrão: sem documento ou sem o campo, o get falha ou devolve false.
+    function hasResearchConsent() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        .get('researchConsent', {}).get('accepted', false) == true;
+    }
+
+    // Mesmo id de isFinalQuiz em src/content/quizzes/index.ts.
+    function finalModuleId() {
+      return 'modulo-05';
+    }
+
+    // As rules não percorrem lista: o tamanho de decisions é validado, o conteúdo de cada item não.
+    function isValidSimulationResult() {
+      let data = request.resource.data;
+      let simulation = get(/databases/$(database)/documents/simulations/$(data.simulationId)).data;
+      return data.keys().hasOnly([
+          'userId', 'simulationId', 'moduleId', 'completedAt', 'totalDecisions',
+          'correctDecisions', 'timeSpentSeconds', 'decisions'
+        ])
+        && data.keys().hasAll([
+          'userId', 'simulationId', 'moduleId', 'completedAt', 'totalDecisions',
+          'correctDecisions', 'timeSpentSeconds', 'decisions'
+        ])
+        && data.userId == request.auth.uid
+        && data.simulationId is string
+        && simulation.moduleId == data.moduleId
+        && isServerTimestamp(data.completedAt)
+        && data.totalDecisions is int && data.totalDecisions >= 1 && data.totalDecisions <= 50
+        && data.correctDecisions is int
+        && data.correctDecisions >= 0
+        && data.correctDecisions <= data.totalDecisions
+        && data.timeSpentSeconds is int
+        && data.timeSpentSeconds >= 0
+        && data.timeSpentSeconds <= 86400
+        && data.decisions is list
+        && data.decisions.size() == data.totalDecisions;
+    }
+
+    // Uma resposta por pessoa (id do documento é o uid) e só depois de concluir a trilha.
+    function isValidTrailFeedback(userId) {
+      let data = request.resource.data;
+      let finalProgress = get(
+        /databases/$(database)/documents/users/$(userId)/progress/$(finalModuleId())
+      ).data;
+      return data.keys().hasOnly([
+          'userId', 'submittedAt', 'securityKnowledge', 'riskPerception',
+          'satisfaction', 'mostUseful', 'comment'
+        ])
+        && data.keys().hasAll([
+          'userId', 'submittedAt', 'securityKnowledge', 'riskPerception',
+          'satisfaction', 'mostUseful'
+        ])
+        && data.userId == userId
+        && isServerTimestamp(data.submittedAt)
+        && data.securityKnowledge in ['iniciante', 'intermediario', 'avancado']
+        && data.riskPerception in riskPerceptionValues()
+        && data.satisfaction in [
+          'gostei_muito', 'gostei', 'indiferente', 'nao_gostei', 'nao_gostei_nada'
+        ]
+        && data.mostUseful is list
+        && data.mostUseful.size() >= 1
+        && data.mostUseful.hasOnly(['licoes', 'quizzes', 'simulacoes', 'nada'])
+        && data.mostUseful.toSet().size() == data.mostUseful.size()
+        && (!('nada' in data.mostUseful) || data.mostUseful.size() == 1)
+        // Único texto livre do site: só tamanho é validado, o resto é tratado como não confiável.
+        && (!('comment' in data)
+            || (data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 500))
+        && finalProgress.completedAt != null;
+    }
+
+    // ------------------------------------------------------------- progress
+
+    function progressKeys() {
+      return [
+        'startedAt', 'completedAt', 'lessonsCompleted', 'quizBestScore',
+        'quizAttempts', 'simulationCompleted', 'lastUpdatedAt'
+      ];
+    }
+
+    function isValidProgressShape(moduleId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(progressKeys())
+        && data.keys().hasAll(progressKeys())
+        && data.lessonsCompleted is list
+        // Não dá pra iterar a lista nas rules, então pelo menos ela não passa do total de lições.
+        && data.lessonsCompleted.size() <= getModule(moduleId).totalLessons
+        && data.quizAttempts is int && data.quizAttempts >= 0
+        && (data.quizBestScore == null
+            || (data.quizBestScore is int && data.quizBestScore >= 0 && data.quizBestScore <= 100))
+        && data.simulationCompleted is bool
+        && isServerTimestamp(data.lastUpdatedAt);
+    }
+
+    // completedAt só pode ser gravado se o próprio documento já mostra o módulo concluído.
+    function isModuleCompleteIn(data, moduleId) {
+      let module = getModule(moduleId);
+      return data.lessonsCompleted.size() >= module.totalLessons
+        && data.quizBestScore != null
+        && data.quizBestScore >= passingScore()
+        && (module.hasSimulation == false || data.simulationCompleted == true);
+    }
+
+    // Nasce com no máximo uma ação feita: é o que markLessonCompleted, saveQuizAttempt e
+    // markSimulationCompleted criam quando o documento ainda não existe.
+    function isValidProgressCreate(moduleId) {
+      let data = request.resource.data;
+      return isValidProgressShape(moduleId)
+        && isServerTimestamp(data.startedAt)
+        && data.completedAt == null
+        && data.lessonsCompleted.size() <= 1
+        && data.quizAttempts <= 1
+        && (data.quizAttempts == 1) == (data.quizBestScore != null);
+    }
+
+    // Progresso só anda pra frente: não apaga lição, não zera tentativa, não desmarca
+    // simulação, não troca startedAt nem completedAt depois de gravados.
+    function isValidProgressUpdate(moduleId) {
+      let data = request.resource.data;
+      let old = resource.data;
+      return isValidProgressShape(moduleId)
+        && data.startedAt == old.startedAt
+        && data.lessonsCompleted.hasAll(old.lessonsCompleted)
+        && (old.simulationCompleted == false || data.simulationCompleted == true)
+        && (
+          (data.quizAttempts == old.quizAttempts && data.quizBestScore == old.quizBestScore)
+          || (data.quizAttempts == old.quizAttempts + 1
+              && data.quizBestScore != null
+              && (old.quizBestScore == null || data.quizBestScore >= old.quizBestScore))
+        )
+        && (
+          (old.completedAt != null && data.completedAt == old.completedAt)
+          || (old.completedAt == null && data.completedAt == null)
+          || (old.completedAt == null
+              && isServerTimestamp(data.completedAt)
+              && isModuleCompleteIn(data, moduleId))
+        );
+    }
+
+    // ---------------------------------------------------------- quizResults
+
+    // Nota tem que bater com acertos/total, do mesmo jeito que calculateScore arredonda.
+    function isValidQuizResult() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'userId', 'moduleId', 'completedAt', 'score', 'totalQuestions',
+          'correctAnswers', 'timeSpentSeconds', 'passed', 'answers'
+        ])
+        && data.keys().hasAll([
+          'userId', 'moduleId', 'completedAt', 'score', 'totalQuestions',
+          'correctAnswers', 'timeSpentSeconds', 'passed', 'answers'
+        ])
+        && data.userId == request.auth.uid
+        && data.moduleId is string
+        && moduleExists(data.moduleId)
+        && isServerTimestamp(data.completedAt)
+        && data.totalQuestions is int && data.totalQuestions >= 1 && data.totalQuestions <= 50
+        && data.correctAnswers is int
+        && data.correctAnswers >= 0
+        && data.correctAnswers <= data.totalQuestions
+        && data.score is int
+        && data.score == math.floor(data.correctAnswers * 100 / data.totalQuestions)
+        && data.passed == (data.score >= passingScore())
+        && data.timeSpentSeconds is int
+        && data.timeSpentSeconds >= 0
+        && data.timeSpentSeconds <= 86400
+        && data.answers is list
+        && data.answers.size() <= data.totalQuestions;
+    }
+
+    // ---------------------------------------------------------------- match
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserCreate();
+      allow update: if isOwner(userId)
+        && roleIsImmutable()
+        && (isLoginUpdate()
+            || isOnboardingCompletion()
+            || isDisplayNameUpdate()
+            || isLateConsent()
+            || isConsentChange()
+            || isFeedbackDismissal());
+      allow delete: if false;
+
+      // O moduleId do path tem que existir em /modules: sem isso dava pra encher a
+      // subcoleção com documentos de módulos inventados.
+      match /progress/{moduleId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && moduleExists(moduleId)
+          && isValidProgressCreate(moduleId);
+        allow update: if isOwner(userId)
+          && moduleExists(moduleId)
+          && isValidProgressUpdate(moduleId);
+        allow delete: if false;
+      }
+    }
+
+    // Conteúdo do TCC (trilha, lições): todo usuário autenticado lê,
+    // ninguém escreve pelo client, isso só entra via script de seed com o
+    // Admin SDK (scripts/seed-modules.ts), que ignora estas regras.
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /lessons/{lessonId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    match /simulations/{simulationId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Resultado de quiz é criado uma vez e nunca mais muda: impede que o
+    // usuário edite a própria nota depois de reprovar
+    match /quizResults/{resultId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidQuizResult();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Dado só da pesquisa: sem consentimento a gravação é recusada aqui, não só filtrada depois.
+    match /simulationResults/{resultId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && hasResearchConsent() && isValidSimulationResult();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /trailFeedback/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && hasResearchConsent() && isValidTrailFeedback(userId);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Catch-all: qualquer coleção que a gente esqueceu de listar acima
+    // fica bloqueada, em vez de aberta por omissão
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

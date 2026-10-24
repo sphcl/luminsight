@@ -1,0 +1,200 @@
+import { describe, it, expect } from 'vitest'
+import { Timestamp } from 'firebase/firestore'
+import { parseModule, parseLesson, parseProgress, parseSimulation } from './firestore-validators'
+import { buildScene, buildSimulation } from '@/test/fixtures/simulation'
+
+const validModule = {
+  title: 'Módulo 4',
+  description: 'Descrição',
+  order: 4,
+  icon: 'shield',
+  color: '#123456',
+  difficulty: 'intermediario',
+  estimatedMinutes: 30,
+  totalLessons: 3,
+  isActive: true,
+  requiredModuleId: 'modulo-03',
+  hasSimulation: true,
+}
+
+const validLesson = {
+  title: 'Lição 1',
+  order: 1,
+  content: [{ type: 'text', content: 'Olá' }],
+  estimatedMinutes: 10,
+  readingTimeSeconds: 120,
+}
+
+const now = Timestamp.now()
+
+const validProgress = {
+  startedAt: now,
+  completedAt: null,
+  lessonsCompleted: ['licao-01'],
+  quizBestScore: null,
+  quizAttempts: 0,
+  simulationCompleted: false,
+  lastUpdatedAt: now,
+}
+
+describe('parseModule', () => {
+  it('aceita um módulo válido', () => {
+    expect(parseModule(validModule)).toEqual(validModule)
+  })
+
+  it('rejeita quando falta um campo obrigatório', () => {
+    const { totalLessons, ...withoutTotalLessons } = validModule
+    expect(parseModule(withoutTotalLessons)).toBeNull()
+  })
+
+  it('rejeita quando um campo tem o tipo errado', () => {
+    expect(parseModule({ ...validModule, order: '4' })).toBeNull()
+  })
+
+  it('rejeita módulo sem hasSimulation, gravado antes do campo existir', () => {
+    const { hasSimulation, ...withoutHasSimulation } = validModule
+    expect(parseModule(withoutHasSimulation)).toBeNull()
+  })
+
+  it('rejeita difficulty fora do enum permitido', () => {
+    expect(parseModule({ ...validModule, difficulty: 'expert' })).toBeNull()
+  })
+
+  it('rejeita valores completamente fora de forma (null, array, string)', () => {
+    expect(parseModule(null)).toBeNull()
+    expect(parseModule([])).toBeNull()
+    expect(parseModule('modulo')).toBeNull()
+  })
+})
+
+describe('parseLesson', () => {
+  it('aceita uma lição válida', () => {
+    expect(parseLesson(validLesson)).toEqual(validLesson)
+  })
+
+  it('rejeita quando falta um campo obrigatório', () => {
+    const { estimatedMinutes, ...withoutEstimatedMinutes } = validLesson
+    expect(parseLesson(withoutEstimatedMinutes)).toBeNull()
+  })
+
+  it('rejeita ContentBlock com type desconhecido', () => {
+    expect(
+      parseLesson({
+        ...validLesson,
+        content: [{ type: 'audio', url: 'https://example.com' }],
+      })
+    ).toBeNull()
+  })
+
+  it('aceita link https e rejeita link fora de https', () => {
+    const link = { type: 'link', url: 'https://cert.br/contato/', title: 'CERT.br' }
+    expect(parseLesson({ ...validLesson, content: [link] })).not.toBeNull()
+
+    for (const url of ['http://cert.br', 'javascript:alert(1)']) {
+      expect(parseLesson({ ...validLesson, content: [{ ...link, url }] })).toBeNull()
+    }
+  })
+
+  it('rejeita video com url que não é https', () => {
+    for (const url of ['javascript:alert(1)', 'http://example.com/video', 'não é url']) {
+      expect(
+        parseLesson({ ...validLesson, content: [{ type: 'video', url, title: 'Vídeo' }] })
+      ).toBeNull()
+    }
+  })
+
+  it('rejeita highlight sem variant', () => {
+    expect(
+      parseLesson({
+        ...validLesson,
+        content: [{ type: 'highlight', content: 'Atenção' }],
+      })
+    ).toBeNull()
+  })
+
+  it('aceita todos os tipos de ContentBlock', () => {
+    const content = [
+      { type: 'text', content: 'texto' },
+      { type: 'heading', content: 'título' },
+      { type: 'highlight', content: 'aviso', variant: 'warning' },
+      { type: 'list', items: ['a', 'b'], ordered: false },
+      { type: 'example', title: 'Exemplo', content: 'conteúdo' },
+      { type: 'fact', content: 'fato', source: 'fonte' },
+      { type: 'video', url: 'https://www.youtube.com/watch?v=abc', title: 'Vídeo' },
+    ]
+    expect(parseLesson({ ...validLesson, content })).not.toBeNull()
+  })
+})
+
+describe('parseProgress', () => {
+  it('aceita um progresso válido', () => {
+    expect(parseProgress(validProgress)).toEqual(validProgress)
+  })
+
+  it('rejeita quando falta um campo obrigatório', () => {
+    const { quizAttempts, ...withoutQuizAttempts } = validProgress
+    expect(parseProgress(withoutQuizAttempts)).toBeNull()
+  })
+
+  it('rejeita startedAt que não seja um Timestamp do Firestore', () => {
+    expect(parseProgress({ ...validProgress, startedAt: new Date().toISOString() })).toBeNull()
+  })
+
+  it('aceita completedAt nulo mas rejeita completedAt com tipo errado', () => {
+    expect(parseProgress(validProgress)).not.toBeNull()
+    expect(parseProgress({ ...validProgress, completedAt: 'agora' })).toBeNull()
+  })
+})
+
+describe('parseSimulation', () => {
+  const { id, ...validSimulation } = buildSimulation()
+
+  it('aceita uma simulação válida e descarta o id gravado junto', () => {
+    expect(parseSimulation({ id, ...validSimulation })).toEqual(validSimulation)
+  })
+
+  it('ordena as cenas pelo campo order', () => {
+    const parsed = parseSimulation({
+      ...validSimulation,
+      scenes: [buildScene(2), buildScene(1)],
+    })
+    expect(parsed?.scenes.map((scene) => scene.id)).toEqual(['cena-01', 'cena-02'])
+  })
+
+  it('rejeita formato desconhecido', () => {
+    expect(parseSimulation({ ...validSimulation, format: 'sms' })).toBeNull()
+  })
+
+  it('rejeita simulação sem contact', () => {
+    const { contact, ...withoutContact } = validSimulation
+    expect(parseSimulation(withoutContact)).toBeNull()
+  })
+
+  it('aceita ramificação, remetente por cena, data do email e conclusão', () => {
+    const scene = buildScene(1, {
+      contact: { name: 'Banco', address: 'seguranca@banco.example' },
+      messages: [{ sender: 'attacker', content: 'Oi', subject: 'Aviso', sentAt: '27/08/2026' }],
+    })
+    const branching = {
+      ...scene,
+      decision: {
+        ...scene.decision,
+        options: scene.decision.options.map((option) => ({ ...option, nextSceneId: null })),
+      },
+    }
+    const parsed = parseSimulation({
+      ...validSimulation,
+      scenes: [branching],
+      conclusion: [{ type: 'text', content: 'Fim.' }],
+    })
+
+    expect(parsed?.scenes[0]?.contact?.address).toBe('seguranca@banco.example')
+    expect(parsed?.scenes[0]?.decision.options[0]?.nextSceneId).toBeNull()
+    expect(parsed?.conclusion).toHaveLength(1)
+  })
+
+  it('rejeita delay negativo', () => {
+    const scene = buildScene(1, { messages: [{ sender: 'attacker', content: 'Oi', delay: -1 }] })
+    expect(parseSimulation({ ...validSimulation, scenes: [scene] })).toBeNull()
+  })
+})
